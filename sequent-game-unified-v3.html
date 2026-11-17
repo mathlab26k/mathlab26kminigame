@@ -621,7 +621,7 @@
               scope="col"
               style="padding: 8px; text-align: left; border-bottom: 1px solid #556;"
             >
-              ユーザーネーム
+              ニックネーム
             </th>
             <th
               scope="col"
@@ -1650,7 +1650,7 @@ function mountScorePanel(container, result) {
   const form = el('form');
   form.id = 'scoreEntryForm';
 
-  const label = el('label', '', 'ユーザーネーム ');
+  const label = el('label', '', 'ニックネーム ');
   const input = el('input', 'aminput');
 
   input.type = 'text';
@@ -2519,7 +2519,7 @@ async function loadRanking() {
   status.textContent = '';
 
   $('rankingLoading').hidden = false;
-  
+
   try {
     const scores = await fetchScores(
       'シーケント計算ゲーム',
