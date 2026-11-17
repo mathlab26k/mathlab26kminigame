@@ -248,6 +248,71 @@
   details { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 8px; }
   details code { color: var(--text); }
   .rulelist { font-family: "Cambria Math", "STIX Two Math", serif; font-size: 14px; }
+
+
+  .ranking-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 220px;
+    margin: 20px 0;
+    padding: 32px 20px;
+    border: 1px solid rgba(255, 209, 102, 0.4);
+    border-radius: 14px;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 209, 102, 0.08),
+      rgba(124, 195, 242, 0.08)
+    );
+    text-align: center;
+  }
+
+  /* display: flex が hidden 属性を上書きしないようにする */
+  .ranking-loading[hidden] {
+    display: none;
+  }
+
+  .ranking-spinner {
+    width: 58px;
+    height: 58px;
+    border: 5px solid rgba(255, 209, 102, 0.18);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: ranking-spin 0.9s linear infinite;
+  }
+
+  .ranking-loading-title {
+    margin: 0;
+    color: var(--accent);
+    font-size: clamp(18px, 4vw, 24px);
+    font-weight: bold;
+  }
+
+  .ranking-loading-note {
+    margin: 0;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  @keyframes ranking-spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* 動きを抑える設定の利用者には、静止した表示にする */
+  @media (prefers-reduced-motion: reduce) {
+    .ranking-spinner {
+      animation: none;
+    }
+  }
 </style>
 
 <script src="src/score.js"></script>
@@ -373,7 +438,15 @@
       </div>
     </details>
   </div>
-  <button class="primary" id="btnStart">ゲーム開始</button>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <button class="primary" id="btnStart" type="button">
+    ゲーム開始
+  </button>
+
+  <button id="btnRankingStart" type="button">
+    ランキングを見る
+  </button>
+</div>
 </div>
 
 <div id="game">
@@ -438,9 +511,7 @@
     <h2 id="ovTitle">結果</h2>
     <div id="ovBody"></div>
 
-    <div
-      style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;"
-    >
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
       <button
         class="primary"
         id="btnRegisterScore"
@@ -453,6 +524,116 @@
       <button id="btnAgain" type="button">
         もう一度
       </button>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <button id="btnRankingResult" type="button">
+        ランキングを見る
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<div
+  id="rankingOverlay"
+  class="overlay"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="rankingTitle"
+  style="z-index: 40;"
+>
+  <div class="box">
+    <div
+      style="display: flex; align-items: center; justify-content: space-between; gap: 12px;"
+    >
+      <h2 id="rankingTitle">ランキング</h2>
+
+      <button id="btnRankingClose" type="button">
+        閉じる
+      </button>
+    </div>
+
+    <div
+      style="display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;"
+    >
+      <label>
+        モード
+        <select id="rankingMode"></select>
+      </label>
+
+      <label>
+        制限時間
+        <select id="rankingLimit"></select>
+      </label>
+
+      <button id="btnRankingReload" type="button">
+        更新
+      </button>
+    </div>
+
+    <p id="rankingCondition" class="note"></p>
+
+    <p class="note">
+      同じモード・制限時間の記録を比較します。
+      上位10件のプレイ記録を表示し、同じ名前の記録も別々に扱います。
+      同点は同順位です。
+    </p>
+    <div
+      id="rankingLoading"
+      class="ranking-loading"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="ranking-spinner"></div>
+
+      <p class="ranking-loading-title">
+        ランキングを読み込み中…
+      </p>
+
+      <p class="ranking-loading-note">
+        スコアを取得しています。<br>
+        そのまましばらくお待ちください。
+      </p>
+    </div>
+    <p
+      id="rankingStatus"
+      class="note"
+      role="status"
+      aria-live="polite"
+    ></p>
+
+    <div style="overflow-x: auto;">
+      <table
+        id="rankingTable"
+        hidden
+        style="width: 100%; border-collapse: collapse;"
+      >
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              style="padding: 8px; text-align: left; border-bottom: 1px solid #556;"
+            >
+              順位
+            </th>
+            <th
+              scope="col"
+              style="padding: 8px; text-align: left; border-bottom: 1px solid #556;"
+            >
+              ユーザーネーム
+            </th>
+            <th
+              scope="col"
+              style="padding: 8px; text-align: right; border-bottom: 1px solid #556;"
+            >
+              スコア
+            </th>
+          </tr>
+        </thead>
+
+        <tbody id="rankingRows"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -2152,6 +2333,288 @@ document.addEventListener('keydown', e => {
     if (state.root) render();
   }
 });
+
+
+
+// ===================== ランキング画面 =====================
+
+const rankingView = {
+  open: false,
+  requestId: 0,
+  returnFocus: null
+};
+
+function initRankingView() {
+  const modeSelect = $('rankingMode');
+  const limitSelect = $('rankingLimit');
+
+  modeSelect.replaceChildren();
+  limitSelect.replaceChildren();
+
+  // ゲームに定義されているモードを選択肢にする。
+  for (const [key, theory] of Object.entries(THEORIES)) {
+    const option = el('option', '', theory.name);
+    option.value = key;
+    modeSelect.appendChild(option);
+  }
+
+  // 開始画面と同じ制限時間の選択肢を使う。
+  for (const source of $('timeSel').options) {
+    limitSelect.appendChild(source.cloneNode(true));
+  }
+
+  $('btnRankingStart').addEventListener('click', () => {
+    const selectedMode = document.querySelector(
+      'input[name="mode"]:checked'
+    );
+
+    openRanking(
+      selectedMode ? selectedMode.value : 'LK',
+      Number($('timeSel').value)
+    );
+  });
+
+  $('btnRankingResult').addEventListener('click', () => {
+    // 終了したゲームの条件で開く。
+    openRanking(state.modeKey, state.limit);
+  });
+
+  $('btnRankingClose').addEventListener('click', closeRanking);
+
+  $('btnRankingReload').addEventListener(
+    'click',
+    loadRanking
+  );
+
+  modeSelect.addEventListener('change', loadRanking);
+  limitSelect.addEventListener('change', loadRanking);
+
+  // モーダルの外側をクリックすると閉じる。
+  $('rankingOverlay').addEventListener('click', event => {
+    if (event.target === $('rankingOverlay')) {
+      closeRanking();
+    }
+  });
+
+  // ランキング表示中は、既存のゲーム側のキー処理に渡さない。
+  document.addEventListener('keydown', event => {
+    if (!rankingView.open) {
+      return;
+    }
+
+    event.stopImmediatePropagation();
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeRanking();
+      return;
+    }
+
+    // Tabキーでフォーカスが背後の画面へ移らないようにする。
+    if (event.key === 'Tab') {
+      const focusable = Array.from(
+        $('rankingOverlay').querySelectorAll(
+          'button:not([disabled]), select:not([disabled])'
+        )
+      );
+
+      if (focusable.length === 0) {
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (!focusable.includes(active)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }, true);
+}
+
+function openRanking(modeKey, limit) {
+  const modeSelect = $('rankingMode');
+  const limitSelect = $('rankingLimit');
+
+  if (!rankingView.open) {
+    rankingView.returnFocus = document.activeElement;
+  }
+
+  modeSelect.value = Object.prototype.hasOwnProperty.call(
+    THEORIES,
+    modeKey
+  )
+    ? modeKey
+    : 'LK';
+
+  const limitValue = String(limit);
+
+  const validLimit = Array.from(limitSelect.options).some(
+    option => option.value === limitValue
+  );
+
+  limitSelect.value = validLimit ? limitValue : '180';
+
+  rankingView.open = true;
+  $('rankingOverlay').style.display = 'flex';
+
+  $('btnRankingClose').focus();
+
+  loadRanking();
+}
+
+function closeRanking() {
+  if (!rankingView.open) {
+    return;
+  }
+
+  rankingView.open = false;
+
+  // 閉じる前に開始した通信結果は、以後の表示に反映しない。
+  rankingView.requestId++;
+
+  $('rankingOverlay').style.display = 'none';
+
+  const returnFocus = rankingView.returnFocus;
+  rankingView.returnFocus = null;
+
+  if (returnFocus && returnFocus.isConnected) {
+    returnFocus.focus();
+  }
+}
+
+async function loadRanking() {
+  if (!rankingView.open) {
+    return;
+  }
+
+  const modeKey = $('rankingMode').value;
+  const limit = Number($('rankingLimit').value);
+
+  const requestId = ++rankingView.requestId;
+
+  const status = $('rankingStatus');
+  const table = $('rankingTable');
+  const rowsElement = $('rankingRows');
+  const reloadButton = $('btnRankingReload');
+
+  const timeLabel = limit === 0
+    ? '無制限（練習ランキング）'
+    : (limit / 60) + '分';
+
+  $('rankingCondition').textContent =
+    THEORIES[modeKey].name + ' ／ ' + timeLabel;
+
+  rowsElement.replaceChildren();
+  table.hidden = true;
+  reloadButton.disabled = true;
+
+  $('rankingLoading').hidden = false;
+
+  status.textContent = 'ランキングを読み込み中…';
+
+  try {
+    const scores = await fetchScores(
+      'シーケント計算ゲーム',
+      {
+        mode: modeKey,
+        limit: limit
+      }
+    );
+
+    // 条件変更や閉じる操作の後に届いた古い結果は無視する。
+    if (
+      !rankingView.open ||
+      requestId !== rankingView.requestId
+    ) {
+      return;
+    }
+
+    const rows = scores
+      .map(row => ({
+        name: String(row.name ?? '名無し'),
+        score: Number(row.score)
+      }))
+      .filter(row => Number.isFinite(row.score))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    if (rows.length === 0) {
+      status.textContent =
+        'このモード・制限時間には、まだ登録がありません。';
+      return;
+    }
+
+    let rank = 0;
+    let previousScore = null;
+
+    rows.forEach((row, index) => {
+      if (index === 0 || row.score !== previousScore) {
+        rank = index + 1;
+      }
+
+      previousScore = row.score;
+
+      const tr = el('tr');
+
+      const rankCell = el('td', '', rank + '位');
+      const nameCell = el('td', '', row.name);
+      const scoreCell = el('td', '', row.score + '点');
+
+      for (const cell of [rankCell, nameCell, scoreCell]) {
+        cell.style.padding = '8px';
+        cell.style.borderBottom = '1px solid #3b4666';
+      }
+
+      rankCell.style.whiteSpace = 'nowrap';
+      nameCell.style.overflowWrap = 'anywhere';
+      scoreCell.style.textAlign = 'right';
+      scoreCell.style.whiteSpace = 'nowrap';
+
+      tr.appendChild(rankCell);
+      tr.appendChild(nameCell);
+      tr.appendChild(scoreCell);
+
+      rowsElement.appendChild(tr);
+    });
+
+    table.hidden = false;
+
+    status.textContent =
+      '上位' + rows.length + '件の記録を表示しています。';
+  } catch (error) {
+    if (
+      !rankingView.open ||
+      requestId !== rankingView.requestId
+    ) {
+      return;
+    }
+
+    status.textContent =
+      'ランキングを取得できませんでした：' +
+      error.message +
+      '。「更新」を押して再試行してください。';
+  } finally {
+    if (
+      rankingView.open &&
+      requestId === rankingView.requestId
+    ) {
+      $('rankingLoading').hidden = true;
+      reloadButton.disabled = false;
+    }
+  }
+}
+
+// このコードは、上記HTML要素と既存のゲーム定義より後で実行する。
+initRankingView();
 </script>
 </body>
 </html>
