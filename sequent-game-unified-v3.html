@@ -437,7 +437,23 @@
   <div class="box">
     <h2 id="ovTitle">結果</h2>
     <div id="ovBody"></div>
-    <p><button class="primary" id="btnAgain">もう一度</button></p>
+
+    <div
+      style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;"
+    >
+      <button
+        class="primary"
+        id="btnRegisterScore"
+        type="submit"
+        form="scoreEntryForm"
+      >
+        スコアを登録する
+      </button>
+
+      <button id="btnAgain" type="button">
+        もう一度
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1228,7 +1244,8 @@ const state = {
   over: false,
   lib: [],
   libCount: 0,
-  lemmaCount: 0
+  lemmaCount: 0,
+  modeKey: null
 };
 let dragRule = null;
 const modal = { node: null, name: null, side: null, idx: null };
@@ -1353,9 +1370,13 @@ function findEntry(id) { return state.lib.find(e => e.id === id); }
 // ===================== 開始・終了 =====================
 function startGame() {
   const key = document.querySelector('input[name=mode]:checked').value;
+
+  state.modeKey = key;
+
   CUR = THEORIES[key];
   SIG = CUR.sig;
   LOGIC = CUR.logic;
+  
   try {
     compileTheory(CUR);
   } catch (e) {
@@ -1404,19 +1425,193 @@ function loadCurrent() {
   render();
 }
 
+
+
+// ===================== スコアパネル =====================
+
+
+
+function mountScorePanel(container, result) {
+  const gameName = 'シーケント計算ゲーム';
+
+  const rankingOptions = {
+    mode: result.modeKey,
+    limit: result.limit
+  };
+
+  const panel = el('section');
+  panel.style.marginTop = '24px';
+
+  const timeLabel = result.limit === 0
+    ? '無制限（練習）'
+    : fmtTime(result.limit);
+
+  panel.appendChild(el('h3', '', 'スコア登録'));
+
+  panel.appendChild(
+    el(
+      'p',
+      'note',
+      result.modeName + ' ／ ' + timeLabel +
+      ' ／ ' + result.score + '点'
+    )
+  );
+
+  panel.appendChild(
+    el(
+      'p',
+      'note',
+      '登録は任意です。登録した名前とスコアはランキングに公開されます。' +
+      '登録しない場合は、そのまま「もう一度」を押してください。'
+    )
+  );
+
+  const form = el('form');
+  form.id = 'scoreEntryForm';
+
+  const label = el('label', '', 'ユーザーネーム ');
+  const input = el('input', 'aminput');
+
+  input.type = 'text';
+  input.required = true;
+  input.maxLength = 30;
+  input.placeholder = '1〜30文字';
+  input.autocomplete = 'nickname';
+
+  label.appendChild(input);
+  form.appendChild(label);
+
+  const saveMessage = el('p', 'note');
+  saveMessage.setAttribute('role', 'status');
+
+  panel.appendChild(form);
+  panel.appendChild(saveMessage);
+  container.appendChild(panel);
+
+  const submitButton = $('btnRegisterScore');
+
+  // 前回の登録状態をリセットする。
+  submitButton.disabled = false;
+  submitButton.textContent = 'スコアを登録する';
+
+  let submitting = false;
+  let submitted = false;
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+
+    if (submitting || submitted) {
+      return;
+    }
+
+    const playerName = input.value.trim();
+
+    if (!playerName || playerName.length > 30) {
+      saveMessage.textContent = '名前を1〜30文字で入力してください。';
+      input.focus();
+      return;
+    }
+
+    submitting = true;
+    input.disabled = true;
+    submitButton.disabled = true;
+    submitButton.textContent = '登録中…';
+
+    saveMessage.textContent = 'スコアを送信中…';
+
+    try {
+      await postScore(
+        gameName,
+        playerName,
+        result.score,
+        rankingOptions
+      );
+
+      submitted = true;
+
+      // 次の結果画面に切り替わっていたら、表示を更新しない。
+      if (!panel.isConnected) {
+        return;
+      }
+
+      submitButton.textContent = '登録済み';
+
+      saveMessage.textContent =
+        result.score + '点の記録を登録しました。';
+    } catch (error) {
+      if (!panel.isConnected) {
+        return;
+      }
+
+      saveMessage.textContent =
+        '保存完了を確認できませんでした：' + error.message +
+        '。保存済みの場合もあるため、再送すると重複登録される可能性があります。';
+
+      input.disabled = false;
+      submitButton.disabled = false;
+      submitButton.textContent = 'スコアを登録する';
+    } finally {
+      submitting = false;
+    }
+  });
+}
+
+
 function endGame(title) {
+  if (state.over) {
+    return;
+  }
+
   clearInterval(state.timer);
   state.over = true;
+
   closeModal();
   closeAxModal();
+
+  // 終了時点の情報を固定する。
+  // 通信中に次のゲームを開始しても、送信内容は変わらない。
+  const result = Object.freeze({
+    modeKey: state.modeKey,
+    modeName: CUR.name,
+    limit: state.limit,
+    score: state.score
+  });
+
   $('ovTitle').textContent = title || '終了';
+
   const body = $('ovBody');
-  body.innerHTML = '';
-  body.appendChild(el('p', '', 'モード: ' + CUR.name));
-  body.appendChild(el('p', '', 'スコア: ' + state.score + ' 点 / 証明した定理: ' + state.solved.length + ' 個'));
+  body.replaceChildren();
+
+  body.appendChild(
+    el('p', '', 'モード: ' + result.modeName)
+  );
+
+  body.appendChild(
+    el(
+      'p',
+      '',
+      'スコア: ' + result.score +
+      ' 点 / 証明した定理: ' + state.solved.length + ' 個'
+    )
+  );
+
   const ul = el('ul');
-  state.solved.forEach(s => ul.appendChild(el('li', '', '⊢ ' + fmtF(s.f) + '  (+' + s.pts + ')')));
+
+  state.solved.forEach(s => {
+    ul.appendChild(
+      el(
+        'li',
+        '',
+        '⊢ ' + fmtF(s.f) + '  (+' + s.pts + ')'
+      )
+    );
+  });
+
   body.appendChild(ul);
+
+  // 名前入力・任意のスコア登録・ランキングを追加する。
+  mountScorePanel(body, result);
+
   $('overlay').style.display = 'flex';
 }
 
