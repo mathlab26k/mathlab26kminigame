@@ -582,10 +582,10 @@
     <div
       id="rankingLoading"
       class="ranking-loading"
-      aria-hidden="true"
+      role="status"
       hidden
     >
-      <div class="ranking-spinner"></div>
+      <div class="ranking-spinner" aria-hidden="true"></div>
 
       <p class="ranking-loading-title">
         ランキングを読み込み中…
@@ -2516,11 +2516,10 @@ async function loadRanking() {
   rowsElement.replaceChildren();
   table.hidden = true;
   reloadButton.disabled = true;
+  status.textContent = '';
 
   $('rankingLoading').hidden = false;
-
-  status.textContent = 'ランキングを読み込み中…';
-
+  
   try {
     const scores = await fetchScores(
       'シーケント計算ゲーム',
