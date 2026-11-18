@@ -1,0 +1,2754 @@
+<!-- File: homology.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#172229">
+  <title>渋山駅 — ホモロジー群当てゲーム</title>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Noto Sans JP",
+        sans-serif;
+      --panel: rgba(15, 25, 31, 0.91);
+      --border: rgba(255, 255, 255, 0.22);
+      --top: env(safe-area-inset-top, 0px);
+      --bottom: env(safe-area-inset-bottom, 0px);
+      --left: env(safe-area-inset-left, 0px);
+      --right: env(safe-area-inset-right, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #172229;
+    }
+
+    body {
+      overscroll-behavior: none;
+    }
+
+    button {
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: var(--panel);
+      color: #f3f5f6;
+      font: inherit;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:hover {
+      background: #354852;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #ffe08a;
+      outline-offset: 3px;
+    }
+
+    #view {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    #escape {
+      position: fixed;
+      top: calc(12px + var(--top));
+      left: calc(12px + var(--left));
+    }
+
+    #status {
+      position: fixed;
+      top: calc(12px + var(--top));
+      right: calc(12px + var(--right));
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      text-align: right;
+      pointer-events: none;
+    }
+
+    #stage-number {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+    }
+
+    #floor-number {
+      display: block;
+      margin-top: 4px;
+      color: #d0dce1;
+      font-size: 12px;
+    }
+
+    #answers {
+      position: fixed;
+      left: calc(12px + var(--left));
+      bottom: calc(12px + var(--bottom));
+      width: min(
+        700px,
+        calc(100vw - 214px - var(--left) - var(--right))
+      );
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+    }
+
+    #answers-label {
+      margin: 0 0 8px;
+      color: #e0e8eb;
+      font-size: 12px;
+    }
+
+    #answer-list {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 3px 2px 7px;
+      scrollbar-width: thin;
+      scrollbar-color: #92a6b0 transparent;
+      overscroll-behavior-x: contain;
+    }
+
+    .answer {
+      flex: 0 0 auto;
+      min-width: 58px;
+      height: 48px;
+      padding: 0 12px;
+      background: #273943;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 23px;
+      white-space: nowrap;
+    }
+
+    .answer sup {
+      font-size: 14px;
+    }
+
+    #controls {
+      position: fixed;
+      right: calc(14px + var(--right));
+      bottom: calc(14px + var(--bottom));
+      display: grid;
+      grid-template-columns: repeat(3, 55px);
+      grid-template-rows: repeat(2, 51px);
+      gap: 5px;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+      font-size: 24px;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .control span {
+      margin-top: 5px;
+      font-size: 10px;
+    }
+
+    #forward {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    #left-turn {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    #right-turn {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    #toast {
+      position: fixed;
+      top: 21%;
+      left: 50%;
+      max-width: calc(100vw - 32px);
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: rgba(10, 18, 23, 0.93);
+      text-align: center;
+      font-size: 14px;
+      opacity: 0;
+      transform: translate(-50%, -8px);
+      transition: opacity 0.15s, transform 0.15s;
+      pointer-events: none;
+    }
+
+    #toast.visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #172229;
+      text-align: center;
+      line-height: 1.9;
+      z-index: 10;
+    }
+
+    #loading[hidden] {
+      display: none;
+    }
+
+    dialog {
+      width: min(560px, calc(100vw - 32px));
+      max-height: calc(100dvh - 36px);
+      padding: 25px;
+      border: 1px solid #566c77;
+      border-radius: 18px;
+      background: #192a33;
+      color: #edf2f5;
+      box-shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    dialog::backdrop {
+      background: rgba(5, 12, 17, 0.73);
+      backdrop-filter: blur(4px);
+    }
+
+    dialog h1 {
+      margin: 0 0 16px;
+      font-size: 23px;
+    }
+
+    dialog p {
+      margin: 0 0 20px;
+      color: #d3dfe5;
+      font-size: 14px;
+      line-height: 1.9;
+      white-space: pre-line;
+    }
+
+    #dialog-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 9px;
+    }
+
+    #dialog-actions .primary {
+      color: #18272e;
+      background: #ffe08a;
+      border-color: #ffe08a;
+      font-weight: 700;
+    }
+
+    @media (max-width: 480px) {
+      #answers {
+        width: calc(
+          100vw - 187px - var(--left) - var(--right)
+        );
+        padding: 8px;
+      }
+
+      #answers-label {
+        font-size: 10px;
+      }
+
+      #controls {
+        grid-template-columns: repeat(3, 47px);
+        grid-template-rows: repeat(2, 48px);
+      }
+
+      .answer {
+        min-width: 51px;
+        padding: 0 10px;
+      }
+
+      #status {
+        padding: 8px 11px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas
+    id="view"
+    aria-label="渋山駅の地下通路。一人称視点の探索画面"
+  ></canvas>
+
+  <button id="escape" type="button">
+    Esc · 中断
+  </button>
+
+  <div id="status">
+    <strong id="stage-number">SHIBUYAMA STATION</strong>
+    <span id="floor-number">地下通路</span>
+  </div>
+
+  <section id="answers" aria-labelledby="answers-label">
+    <p id="answers-label">
+      H₁ を回答 · 整数係数 · 横スクロール
+    </p>
+    <div id="answer-list"></div>
+  </section>
+
+  <nav id="controls" aria-label="移動操作">
+    <button
+      id="forward"
+      class="control"
+      type="button"
+      aria-label="進む"
+    >
+      ↑
+      <span>進む</span>
+    </button>
+
+    <button
+      id="left-turn"
+      class="control"
+      type="button"
+      aria-label="左を向く"
+    >
+      ←
+      <span>左を向く</span>
+    </button>
+
+    <button
+      id="right-turn"
+      class="control"
+      type="button"
+      aria-label="右を向く"
+    >
+      →
+      <span>右を向く</span>
+    </button>
+  </nav>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <div id="loading" role="status">
+    渋山駅を読み込んでいます…
+  </div>
+
+  <dialog id="modal" aria-labelledby="dialog-title">
+    <h1 id="dialog-title"></h1>
+    <p id="dialog-body"></p>
+    <div id="dialog-actions"></div>
+  </dialog>
+
+  <script type="module">
+    "use strict";
+
+    const loading = document.getElementById("loading");
+
+    try {
+      const THREE = await import(
+        "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      );
+
+      const { createExpansion } = await import(
+        "./expansion.js"
+      );
+
+      main(THREE, createExpansion);
+    } catch (error) {
+      console.error(error);
+
+      loading.hidden = false;
+      loading.style.whiteSpace = "pre-wrap";
+      loading.style.overflowWrap = "anywhere";
+
+      const details = error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
+
+      loading.textContent =
+        "ゲームの起動中にエラーが発生しました。"
+        + "\n\n"
+        + details;
+    }
+
+    function main(THREE, createExpansion) {
+      /*
+       * 座標:
+       * x = 図面の右
+       * z = 図面の手前
+       * y = 高さ
+       *
+       * 整数係数の第1ホモロジー群を回答する。
+       * ステージ④以降は図面待ち。
+       */
+      const STAGES = [
+        {
+          id: 1,
+          answer: "Z2",
+          ready: true,
+          explanation:
+            "2つの通れない領域を囲むループが、"
+            + "独立な2つの生成元になります。"
+            + "\n通行可能領域は8の字にホモトピー同値です。"
+        },
+        {
+          id: 2,
+          answer: "Z4",
+          ready: true,
+          explanation:
+            "2階の柱を囲むループが1つあります。"
+            + "\n2つの階を結ぶ4本の階段からは、"
+            + "独立なループが3つ生まれます。"
+            + "\n階数は 1 + (4 − 2 + 1) = 4 です。"
+        },
+        {
+          id: 3,
+          answer: "Z7",
+          ready: true,
+          explanation:
+            "2階の回廊に、独立なループが1つあります。"
+            + "\n3つの階を結ぶ8本の階段からは、"
+            + "独立なループが6つ生まれます。"
+            + "\n階数は 1 + (8 − 3 + 1) = 7 です。"
+        },
+        {
+          id: 4,
+          answer: "Z2",
+          ready: true,
+          explanation:
+            "通路全体を1周するループと、"
+            + "柱を囲むループが独立な生成元です。"
+            + "\nアニュラスから1点を除いた空間と"
+            + "同じホモトピー型です。"
+        },
+        {
+          id: 5,
+          answer: "zero",
+          ready: true,
+          explanation:
+            "この空間は、折り畳み座標で表示した球面です。"
+            + "\n床の青線と緑線は大円の目印であり、"
+            + "空間に穴を開けているわけではありません。"
+            + "\n球面の第1ホモロジー群は0です。"
+        },
+        {
+          id: 6,
+          answer: "Z2",
+          ready: true,
+          explanation:
+            "この空間はトーラスです。"
+            + "\n大きく1周する方向と、"
+            + "小さく1周する方向が独立な生成元です。"
+            + "\n緑線と黄線は位置が異なりますが、"
+            + "矢印の向きの違いを除けば同じ種類の周回です。"
+        },
+        {
+          id: 7,
+          answer: "Z3",
+          ready: true,
+          explanation:
+            "1階の回廊に、独立なループが1つあります。"
+            + "\n4つの階を結ぶ5本の階段からは、"
+            + "独立なループが2つ生まれます。"
+            + "\n階数は 1 + (5 − 4 + 1) = 3 です。"
+            + "\n2階の突き出し壁は外壁につながっているため、"
+            + "新しい独立な穴を作りません。"
+        },
+        {
+          id: 8,
+          answer: "Z1",
+          ready: true,
+          explanation:
+            "球面からG・Hの2点を除いた空間です。"
+            + "\nこの空間は円周にホモトピー同値です。"
+            + "\n2本の柱をそれぞれ囲むループは"
+            + "独立ではなく、第1ホモロジー群はℤです。"
+        },
+        {
+          id: 9,
+          answer: "Z2",
+          ready: true,
+          explanation:
+            "トーラスから1点を除いた空間です。"
+            + "\nこの空間は2つの円の一点和に"
+            + "ホモトピー同値です。"
+            + "\n柱を囲む周回は、追加の独立な"
+            + "第1ホモロジーの生成元にはなりません。"
+        },
+        {
+          id: 10,
+          answer: "Z1",
+          ready: true,
+          explanation:
+            "それぞれの球面の第1ホモロジー群は0です。"
+            + "\n一方の階段で別の球面へ進み、"
+            + "もう一方の階段で戻ることで、"
+            + "独立なループが1つできます。"
+            + "\nしたがって第1ホモロジー群はℤです。"
+        }
+      ];
+
+      const CHOICES = [
+        { id: "zero", label: "0" },
+        { id: "Z1", label: "ℤ" },
+        { id: "Z2", label: "ℤ²", rank: 2 },
+        { id: "Z3", label: "ℤ³", rank: 3 },
+        { id: "Z4", label: "ℤ⁴", rank: 4 },
+        { id: "Z5", label: "ℤ⁵", rank: 5 },
+        { id: "Z6", label: "ℤ⁶", rank: 6 },
+        { id: "Z7", label: "ℤ⁷", rank: 7 },
+        { id: "Zmod2", label: "ℤ / 2ℤ" }
+      ];
+
+      const PLAYER = {
+        radius: 0.16,
+        eye: 1.52,
+        step: 0.65,
+        moveTime: 230,
+        turnTime: 230
+      };
+
+      const canvas = document.getElementById("view");
+      const modal = document.getElementById("modal");
+      const toast = document.getElementById("toast");
+      const floorLabel = document.getElementById("floor-number");
+
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        powerPreference: "high-performance"
+      });
+
+      renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio || 1, 1.6)
+      );
+
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.setClearColor(0x202d32);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x202d32);
+      scene.fog = new THREE.Fog(0x202d32, 24, 70);
+
+      const camera = new THREE.PerspectiveCamera(
+        68,
+        1,
+        0.04,
+        100
+      );
+
+      scene.add(
+        new THREE.HemisphereLight(
+          0xe8f3ff,
+          0x6b7165,
+          2.2
+        )
+      );
+
+      const sunlight = new THREE.DirectionalLight(
+        0xfff4dd,
+        1.35
+      );
+
+      sunlight.position.set(-8, 18, 9);
+      scene.add(sunlight);
+
+      const fillLight = new THREE.DirectionalLight(
+        0xb8d5e6,
+        0.55
+      );
+
+      fillLight.position.set(10, 5, -12);
+      scene.add(fillLight);
+
+      let world = new THREE.Group();
+      scene.add(world);
+
+      let surfaces = [];
+      let barriers = [];
+      let letters = [];
+      let stairCount = 0;
+      let ownedMaterials = [];
+      let ownedTextures = [];
+      let animation = null;
+      let toastTimer = null;
+      let cancelDialogAction = null;
+
+      const state = {
+        stage: 0,
+        x: 0,
+        z: 0,
+        foot: 0,
+        yaw: 0,
+        floor: "1F",
+        started: false,
+        completed: false,
+        dirty: true
+      };
+
+      /*
+       * マテリアル・テクスチャ
+       */
+      function tileMaterial(base, line, repeatX, repeatY) {
+        const textureCanvas = document.createElement("canvas");
+        textureCanvas.width = 128;
+        textureCanvas.height = 128;
+
+        const g = textureCanvas.getContext("2d");
+
+        g.fillStyle = base;
+        g.fillRect(0, 0, 128, 128);
+
+        g.strokeStyle = line;
+        g.lineWidth = 2;
+        g.strokeRect(0, 0, 128, 128);
+
+        g.fillStyle = "rgba(255, 255, 255, 0.025)";
+
+        for (let y = 8; y < 128; y += 16) {
+          for (let x = 8; x < 128; x += 16) {
+            g.fillRect(x, y, 2, 2);
+          }
+        }
+
+        const texture = new THREE.CanvasTexture(textureCanvas);
+
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(repeatX, repeatY);
+        texture.anisotropy = Math.min(
+          8,
+          renderer.capabilities.getMaxAnisotropy()
+        );
+
+        ownedTextures.push(texture);
+
+        const material = new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.93,
+          metalness: 0
+        });
+
+        ownedMaterials.push(material);
+        return material;
+      }
+
+      function solidMaterial(color, extra = {}) {
+        const material = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.8,
+          ...extra
+        });
+
+        ownedMaterials.push(material);
+        return material;
+      }
+
+      let wallMaterial;
+      let slabMaterial;
+      let stairMaterial;
+      let edgeMaterial;
+      let railMaterial;
+      let ceilingMaterial;
+
+      function makeMaterials() {
+        wallMaterial = solidMaterial(0xc4ccc7);
+        slabMaterial = solidMaterial(0x7f8984);
+        stairMaterial = solidMaterial(0xa7afaa);
+        edgeMaterial = solidMaterial(0x52656d);
+        railMaterial = solidMaterial(0x768a92, {
+          roughness: 0.38,
+          metalness: 0.65
+        });
+        ceilingMaterial = solidMaterial(0xa4ada8);
+      }
+
+      function addBox(x, y, z, sx, sy, sz, material) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(sx, sy, sz),
+          material
+        );
+
+        mesh.position.set(x, y, z);
+        world.add(mesh);
+        return mesh;
+      }
+
+      function addBeam(a, b, radius = 0.035) {
+        const start = new THREE.Vector3(a.x, a.y, a.z);
+        const end = new THREE.Vector3(b.x, b.y, b.z);
+        const direction = end.clone().sub(start);
+
+        const mesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(
+            radius,
+            radius,
+            direction.length(),
+            8
+          ),
+          railMaterial
+        );
+
+        mesh.position.copy(start).add(end).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0),
+          direction.normalize()
+        );
+
+        world.add(mesh);
+      }
+
+      /*
+       * 歩行面:
+       * 平面と階段の滑らかな歩行面を別々に保持する。
+       * 見た目は段差、カメラの高さは滑らかに変化する。
+       */
+      function flatSurface(x0, z0, x1, z1, y, label) {
+        surfaces.push({
+          x0,
+          z0,
+          x1,
+          z1,
+          label,
+          heightAt: () => y
+        });
+      }
+
+      function floorRect(x0, z0, x1, z1, y, label) {
+        const sx = x1 - x0;
+        const sz = z1 - z0;
+
+        addBox(
+          (x0 + x1) / 2,
+          y - 0.09,
+          (z0 + z1) / 2,
+          sx,
+          0.18,
+          sz,
+          slabMaterial
+        );
+
+        const material = tileMaterial(
+          "#969e93",
+          "#747f76",
+          sx,
+          sz
+        );
+
+        const plane = new THREE.Mesh(
+          new THREE.PlaneGeometry(sx, sz),
+          material
+        );
+
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.set(
+          (x0 + x1) / 2,
+          y + 0.002,
+          (z0 + z1) / 2
+        );
+
+        world.add(plane);
+        flatSurface(x0, z0, x1, z1, y, label);
+      }
+
+      function ceilingRect(x0, z0, x1, z1, y) {
+        addBox(
+          (x0 + x1) / 2,
+          y + 0.06,
+          (z0 + z1) / 2,
+          x1 - x0,
+          0.12,
+          z1 - z0,
+          ceilingMaterial
+        );
+      }
+
+      /*
+       * 壁と手すりの衝突判定用線分。
+       * bottom/top は線分上の位置 t に依存できる。
+       */
+      function addBarrier(
+        a,
+        b,
+        bottom,
+        top,
+        thickness = 0.12
+      ) {
+        barriers.push({
+          a,
+          b,
+          bottom: typeof bottom === "function"
+            ? bottom
+            : () => bottom,
+          top: typeof top === "function"
+            ? top
+            : () => top,
+          thickness
+        });
+      }
+
+      function wallLine(a, b, y, height, thickness = 0.14) {
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const length = Math.hypot(dx, dz);
+
+        const mesh = addBox(
+          (a.x + b.x) / 2,
+          y + height / 2,
+          (a.z + b.z) / 2,
+          length,
+          height,
+          thickness,
+          wallMaterial
+        );
+
+        mesh.rotation.y = -Math.atan2(dz, dx);
+        addBarrier(a, b, y, y + height, thickness);
+      }
+
+      function railLine(a, b, y0, y1 = y0) {
+        const length = Math.hypot(
+          b.x - a.x,
+          b.z - a.z
+        );
+
+        for (const lift of [0.48, 1.02]) {
+          addBeam(
+            { x: a.x, y: y0 + lift, z: a.z },
+            { x: b.x, y: y1 + lift, z: b.z }
+          );
+        }
+
+        const posts = Math.max(1, Math.ceil(length / 0.85));
+
+        for (let i = 0; i <= posts; i++) {
+          const t = i / posts;
+          const x = a.x + (b.x - a.x) * t;
+          const z = a.z + (b.z - a.z) * t;
+          const y = y0 + (y1 - y0) * t;
+
+          addBeam(
+            { x, y, z },
+            { x, y: y + 1.04, z },
+            0.028
+          );
+        }
+
+        addBarrier(
+          a,
+          b,
+          (t) => y0 + (y1 - y0) * t,
+          (t) => y0 + (y1 - y0) * t + 1.05,
+          0.06
+        );
+      }
+
+      /*
+       * 軸に平行な境界に開口部を設ける。
+       *
+       * axis = "x": x固定、z方向の壁
+       * axis = "z": z固定、x方向の壁
+       *
+       * openings は [開始座標, 終了座標] の配列。
+       */
+      function boundary(
+        axis,
+        fixed,
+        from,
+        to,
+        y,
+        height,
+        openings = [],
+        rail = false
+      ) {
+        const intervals = openings
+          .map(([a, b]) => [
+            Math.max(from, a),
+            Math.min(to, b)
+          ])
+          .filter(([a, b]) => b > a)
+          .sort((a, b) => a[0] - b[0]);
+
+        function point(value) {
+          return axis === "x"
+            ? { x: fixed, z: value }
+            : { x: value, z: fixed };
+        }
+
+        function solid(a, b) {
+          if (b - a < 0.001) {
+            return;
+          }
+
+          if (rail) {
+            railLine(point(a), point(b), y);
+          } else {
+            wallLine(point(a), point(b), y, height);
+          }
+        }
+
+        let cursor = from;
+
+        for (const [a, b] of intervals) {
+          solid(cursor, a);
+
+          if (!rail && height > 2.38) {
+            wallLine(
+              point(a),
+              point(b),
+              y + 2.38,
+              height - 2.38
+            );
+          }
+
+          cursor = Math.max(cursor, b);
+        }
+
+        solid(cursor, to);
+      }
+
+      function roomWalls(
+        halfX,
+        halfZ,
+        y,
+        height,
+        openings = {}
+      ) {
+        boundary(
+          "x",
+          -halfX,
+          -halfZ,
+          halfZ,
+          y,
+          height,
+          openings.west || []
+        );
+
+        boundary(
+          "x",
+          halfX,
+          -halfZ,
+          halfZ,
+          y,
+          height,
+          openings.east || []
+        );
+
+        boundary(
+          "z",
+          -halfZ,
+          -halfX,
+          halfX,
+          y,
+          height,
+          openings.north || []
+        );
+
+        boundary(
+          "z",
+          halfZ,
+          -halfX,
+          halfX,
+          y,
+          height,
+          openings.south || []
+        );
+      }
+
+      /*
+       * 看板。黄色地のA〜Hは各ステージに1つずつ。
+       * rotation は看板の表側が通路を向くように指定する。
+       */
+      function sign(
+        text,
+        x,
+        y,
+        z,
+        rotation,
+        width = 0.56,
+        height = 0.4,
+        style = "letter"
+      ) {
+        const c = document.createElement("canvas");
+        c.width = style === "welcome" ? 1024 : 512;
+        c.height = style === "welcome" ? 128 : 256;
+
+        const g = c.getContext("2d");
+
+        if (style === "welcome") {
+          g.fillStyle = "#c4ccc7";
+          g.fillRect(0, 0, c.width, c.height);
+          g.fillStyle = "#7d8982";
+          g.font = "40px sans-serif";
+        } else {
+          g.fillStyle = style === "letter"
+            ? "#f5dd63"
+            : "#243b49";
+
+          g.fillRect(0, 0, c.width, c.height);
+
+          g.strokeStyle = style === "letter"
+            ? "#464b3d"
+            : "#9ab0bc";
+
+          g.lineWidth = 10;
+          g.strokeRect(5, 5, c.width - 10, c.height - 10);
+
+          g.fillStyle = style === "letter"
+            ? "#111710"
+            : "#edf4f7";
+
+          g.font = style === "letter"
+            ? "bold 185px sans-serif"
+            : "bold 90px sans-serif";
+        }
+
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(
+          text,
+          c.width / 2,
+          c.height / 2 + 5,
+          c.width * 0.92
+        );
+
+        const texture = new THREE.CanvasTexture(c);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = Math.min(
+          8,
+          renderer.capabilities.getMaxAnisotropy()
+        );
+
+        ownedTextures.push(texture);
+
+        const material = new THREE.MeshBasicMaterial({
+          map: texture
+        });
+
+        ownedMaterials.push(material);
+
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(width, height),
+          material
+        );
+
+        mesh.position.set(x, y, z);
+        mesh.rotation.y = rotation;
+        world.add(mesh);
+
+        if (/^[A-H]$/.test(text)) {
+          letters.push(text);
+        }
+      }
+
+      function wallSign(letter, side, fixed, along, y) {
+        if (side === "west") {
+          sign(
+            letter,
+            fixed + 0.085,
+            y,
+            along,
+            Math.PI / 2
+          );
+        } else if (side === "east") {
+          sign(
+            letter,
+            fixed - 0.085,
+            y,
+            along,
+            -Math.PI / 2
+          );
+        } else if (side === "north") {
+          sign(letter, along, y, fixed + 0.085, 0);
+        } else {
+          sign(
+            letter,
+            along,
+            y,
+            fixed - 0.085,
+            Math.PI
+          );
+        }
+      }
+
+      /*
+       * 直線階段。
+       * a / b は { x, z, y }。
+       * 軸に平行な階段として構築する。
+       */
+      function stairFlight(a, b, stairWidth, label) {
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const length = Math.hypot(dx, dz);
+        const ux = dx / length;
+        const uz = dz / length;
+        const px = -uz;
+        const pz = ux;
+
+        const steps = Math.max(
+          4,
+          Math.ceil(Math.abs(b.y - a.y) / 0.15)
+        );
+
+        for (let i = 0; i < steps; i++) {
+          const t0 = i / steps;
+          const t1 = (i + 1) / steps;
+          const t = (t0 + t1) / 2;
+
+          const h0 = a.y + (b.y - a.y) * t0;
+          const h1 = a.y + (b.y - a.y) * t1;
+          const top = Math.max(h0, h1);
+          const thickness = Math.abs(h1 - h0) + 0.16;
+
+          const step = addBox(
+            a.x + dx * t,
+            top - thickness / 2,
+            a.z + dz * t,
+            stairWidth,
+            thickness,
+            length / steps + 0.012,
+            stairMaterial
+          );
+
+          step.rotation.y = Math.atan2(ux, uz);
+
+          const edge = addBox(
+            a.x + dx * t0,
+            top + 0.005,
+            a.z + dz * t0,
+            stairWidth,
+            0.012,
+            0.035,
+            edgeMaterial
+          );
+
+          edge.rotation.y = Math.atan2(ux, uz);
+        }
+
+        const half = stairWidth / 2;
+
+        for (const direction of [-1, 1]) {
+          railLine(
+            {
+              x: a.x + px * half * direction,
+              z: a.z + pz * half * direction
+            },
+            {
+              x: b.x + px * half * direction,
+              z: b.z + pz * half * direction
+            },
+            a.y,
+            b.y
+          );
+        }
+
+        surfaces.push({
+          x0: Math.min(a.x, b.x) - Math.abs(px) * half,
+          x1: Math.max(a.x, b.x) + Math.abs(px) * half,
+          z0: Math.min(a.z, b.z) - Math.abs(pz) * half,
+          z1: Math.max(a.z, b.z) + Math.abs(pz) * half,
+          label,
+          heightAt: (x, z) => {
+            const t = Math.max(
+              0,
+              Math.min(
+                1,
+                ((x - a.x) * ux + (z - a.z) * uz)
+                  / length
+              )
+            );
+
+            return a.y + (b.y - a.y) * t;
+          }
+        });
+      }
+
+      function welcome(x, y, z, rotation, width = 2.2) {
+        sign(
+          "Welcome to Shibuyama station",
+          x,
+          y,
+          z,
+          rotation,
+          width,
+          0.26,
+          "welcome"
+        );
+      }
+
+      /*
+       * ステージ①:
+       * 長方形の内部に2つの通れない領域。
+       * 路線表示は一切作らない。
+       */
+      function buildStageOne() {
+        floorRect(-6, -3, 6, 3, 0, "1F");
+        ceilingRect(-6, -3, 6, 3, 2.9);
+        roomWalls(6, 3, 0, 2.9);
+
+        const pillars = [
+          { x0: -4.2, z0: -1.4, x1: -1.2, z1: 1.2 },
+          { x0: 1.2, z0: -1.3, x1: 4, z1: 1.2 }
+        ];
+
+        for (const p of pillars) {
+          wallLine(
+            { x: p.x0, z: p.z0 },
+            { x: p.x1, z: p.z0 },
+            0,
+            2.9
+          );
+
+          wallLine(
+            { x: p.x1, z: p.z0 },
+            { x: p.x1, z: p.z1 },
+            0,
+            2.9
+          );
+
+          wallLine(
+            { x: p.x1, z: p.z1 },
+            { x: p.x0, z: p.z1 },
+            0,
+            2.9
+          );
+
+          wallLine(
+            { x: p.x0, z: p.z1 },
+            { x: p.x0, z: p.z0 },
+            0,
+            2.9
+          );
+        }
+
+        wallSign("A", "north", -3, 0, 1.85);
+        wallSign("B", "west", -6, -2.45, 1.85);
+        wallSign("C", "west", -6, 0, 1.85);
+        wallSign("D", "west", -6, 2.45, 1.85);
+        wallSign("E", "south", 3, 0, 1.85);
+        wallSign("F", "east", 6, 2.45, 1.85);
+        wallSign("G", "east", 6, 0, 1.85);
+        wallSign("H", "east", 6, -2.45, 1.85);
+
+        welcome(
+          -1.115,
+          1.65,
+          -0.1,
+          Math.PI / 2
+        );
+
+        return {
+          x: 0,
+          z: 0.65,
+          foot: 0,
+          yaw: 0,
+          floor: "1F"
+        };
+      }
+
+      /*
+       * ステージ②の折り返し階段。
+       *
+       * 1本の接続を、2つの階段区間と踊り場で表現する。
+       * 接続本数としては1本であり、2本とは数えない。
+       */
+      function uStair(side, centerZ, upperLetter) {
+        const direction = side === "west" ? -1 : 1;
+        const roomEdge = 6 * direction;
+        const outerFlight = 9.6 * direction;
+        const outerLanding = 10.9 * direction;
+
+        const lowerZ = centerZ + 0.65;
+        const upperZ = centerZ - 0.65;
+        const stairWidth = 1.2;
+        const middleY = 2.4;
+        const upperY = 4.8;
+
+        stairFlight(
+          { x: roomEdge, z: lowerZ, y: 0 },
+          { x: outerFlight, z: lowerZ, y: middleY },
+          stairWidth,
+          "階段 · 1F ↔ 2F"
+        );
+
+        floorRect(
+          Math.min(outerFlight, outerLanding),
+          centerZ - 1.25,
+          Math.max(outerFlight, outerLanding),
+          centerZ + 1.25,
+          middleY,
+          "踊り場 · 1F ↔ 2F"
+        );
+
+        stairFlight(
+          { x: outerFlight, z: upperZ, y: middleY },
+          { x: roomEdge, z: upperZ, y: upperY },
+          stairWidth,
+          "階段 · 1F ↔ 2F"
+        );
+
+        // 階段室を囲む壁。別の階段室とは接続しない。
+        wallLine(
+          { x: outerLanding, z: centerZ - 1.32 },
+          { x: outerLanding, z: centerZ + 1.32 },
+          0,
+          7.7
+        );
+
+        wallLine(
+          { x: roomEdge, z: centerZ - 1.32 },
+          { x: outerLanding, z: centerZ - 1.32 },
+          0,
+          7.7
+        );
+
+        wallLine(
+          { x: roomEdge, z: centerZ + 1.32 },
+          { x: outerLanding, z: centerZ + 1.32 },
+          0,
+          7.7
+        );
+
+        ceilingRect(
+          Math.min(roomEdge, outerLanding),
+          centerZ - 1.32,
+          Math.max(roomEdge, outerLanding),
+          centerZ + 1.32,
+          7.7
+        );
+
+        const inwardX = roomEdge - direction * 0.085;
+        const rotation = direction > 0
+          ? -Math.PI / 2
+          : Math.PI / 2;
+
+        sign(
+          "2F ↑",
+          inwardX,
+          2.08,
+          lowerZ,
+          rotation,
+          0.78,
+          0.28,
+          "guide"
+        );
+
+        // D〜Gはそれぞれ対応する2階の階段口に配置。
+        sign(
+          upperLetter,
+          inwardX,
+          upperY + 2.6,
+          upperZ,
+          rotation
+        );
+
+        sign(
+          "1F ↓",
+          inwardX,
+          upperY + 2.08,
+          upperZ,
+          rotation,
+          0.78,
+          0.28,
+          "guide"
+        );
+
+        stairCount++;
+      }
+
+      function buildStageTwo() {
+        const upper = 4.8;
+        const centers = [-2.2, 2.2];
+
+        const lowerDoors = centers.map((z) => [
+          z + 0.65 - 0.64,
+          z + 0.65 + 0.64
+        ]);
+
+        const upperDoors = centers.map((z) => [
+          z - 0.65 - 0.64,
+          z - 0.65 + 0.64
+        ]);
+
+        floorRect(-6, -4, 6, 4, 0, "1F");
+        floorRect(-6, -4, 6, 4, upper, "2F");
+
+        roomWalls(6, 4, 0, upper, {
+          west: lowerDoors,
+          east: lowerDoors
+        });
+
+        roomWalls(6, 4, upper, 2.9, {
+          west: upperDoors,
+          east: upperDoors
+        });
+
+        ceilingRect(-6, -4, 6, 4, upper + 2.9);
+
+        wallSign("A", "west", -6, 0, 1.85);
+        wallSign("B", "north", -4, 0, 1.85);
+        wallSign("C", "east", 6, 0, 1.85);
+
+        // A手前→E、A奥→D、C手前→F、C奥→G。
+        uStair("west", 2.2, "E");
+        uStair("west", -2.2, "D");
+        uStair("east", 2.2, "F");
+        uStair("east", -2.2, "G");
+
+        // 2階の中央の柱。天井まで伸ばして通行を遮る。
+        addBox(
+          0,
+          upper + 1.45,
+          0,
+          1.05,
+          2.9,
+          1.05,
+          wallMaterial
+        );
+
+        const half = 0.525;
+
+        wallLine(
+          { x: -half, z: -half },
+          { x: half, z: -half },
+          upper,
+          2.9
+        );
+
+        wallLine(
+          { x: half, z: -half },
+          { x: half, z: half },
+          upper,
+          2.9
+        );
+
+        wallLine(
+          { x: half, z: half },
+          { x: -half, z: half },
+          upper,
+          2.9
+        );
+
+        wallLine(
+          { x: -half, z: half },
+          { x: -half, z: -half },
+          upper,
+          2.9
+        );
+
+        sign(
+          "H",
+          0,
+          upper + 1.85,
+          half + 0.085,
+          0
+        );
+
+        welcome(
+          0,
+          1.28,
+          -3.91,
+          0,
+          2.4
+        );
+
+        return {
+          x: 0,
+          z: 2.8,
+          foot: 0,
+          yaw: 0,
+          floor: "1F"
+        };
+      }
+
+      /*
+       * ステージ③:
+       *
+       * 1F: 中央の正方形
+       * 2F: 正方形の回廊
+       * 3F: 中央の正方形
+       *
+       * 回廊の各辺から、1Fと3Fへ1本ずつ接続。
+       * 上りと下りは横に並べ、互いに交差させない。
+       */
+      function buildStageThree() {
+        const middle = 3.4;
+        const upper = 6.8;
+        const inner = 7;
+        const outer = 10;
+        const roomHalf = 2.4;
+        const offset = 0.9;
+        const stairWidth = 1.3;
+        const doorHalf = 0.69;
+
+        floorRect(
+          -roomHalf,
+          -roomHalf,
+          roomHalf,
+          roomHalf,
+          0,
+          "1F"
+        );
+
+        floorRect(
+          -outer,
+          -outer,
+          outer,
+          -inner,
+          middle,
+          "2F · 回廊"
+        );
+
+        floorRect(
+          -outer,
+          inner,
+          outer,
+          outer,
+          middle,
+          "2F · 回廊"
+        );
+
+        floorRect(
+          -outer,
+          -inner,
+          -inner,
+          inner,
+          middle,
+          "2F · 回廊"
+        );
+
+        floorRect(
+          inner,
+          -inner,
+          outer,
+          inner,
+          middle,
+          "2F · 回廊"
+        );
+
+        floorRect(
+          -roomHalf,
+          -roomHalf,
+          roomHalf,
+          roomHalf,
+          upper,
+          "3F"
+        );
+
+        const lowerOpening = [
+          [-offset - doorHalf, -offset + doorHalf]
+        ];
+
+        const upperOpening = [
+          [offset - doorHalf, offset + doorHalf]
+        ];
+
+        roomWalls(roomHalf, roomHalf, 0, 2.75, {
+          west: lowerOpening,
+          east: lowerOpening,
+          north: lowerOpening,
+          south: lowerOpening
+        });
+
+        roomWalls(roomHalf, roomHalf, upper, 2.75, {
+          west: upperOpening,
+          east: upperOpening,
+          north: upperOpening,
+          south: upperOpening
+        });
+
+        ceilingRect(
+          -roomHalf,
+          -roomHalf,
+          roomHalf,
+          roomHalf,
+          2.75
+        );
+
+        ceilingRect(
+          -roomHalf,
+          -roomHalf,
+          roomHalf,
+          roomHalf,
+          upper + 2.75
+        );
+
+        roomWalls(outer, outer, middle, 2.9);
+
+        // 回廊の上の天井。中央の吹き抜けは塞がない。
+        ceilingRect(-outer, -outer, outer, -inner, middle + 2.9);
+        ceilingRect(-outer, inner, outer, outer, middle + 2.9);
+        ceilingRect(-outer, -inner, -inner, inner, middle + 2.9);
+        ceilingRect(inner, -inner, outer, inner, middle + 2.9);
+
+        const innerOpenings = [
+          [-offset - doorHalf, -offset + doorHalf],
+          [offset - doorHalf, offset + doorHalf]
+        ];
+
+        boundary(
+          "x",
+          -inner,
+          -inner,
+          inner,
+          middle,
+          2.9,
+          innerOpenings,
+          false
+        );
+
+        boundary(
+          "x",
+          inner,
+          -inner,
+          inner,
+          middle,
+          2.9,
+          innerOpenings,
+          false
+        );
+
+        boundary(
+          "z",
+          -inner,
+          -inner,
+          inner,
+          middle,
+          2.9,
+          innerOpenings,
+          false
+        );
+
+        boundary(
+          "z",
+          inner,
+          -inner,
+          inner,
+          middle,
+          2.9,
+          innerOpenings,
+          false
+        );
+
+        const sides = [
+          { axis: "x", direction: 1 },
+          { axis: "x", direction: -1 },
+          { axis: "z", direction: -1 },
+          { axis: "z", direction: 1 }
+        ];
+
+        function radialPoint(axis, direction, radius, side, y) {
+          if (axis === "x") {
+            return {
+              x: direction * radius,
+              z: side,
+              y
+            };
+          }
+
+          return {
+            x: side,
+            z: direction * radius,
+            y
+          };
+        }
+
+        for (const side of sides) {
+          const { axis, direction } = side;
+
+          stairFlight(
+            radialPoint(
+              axis, direction, roomHalf, -offset, 0
+            ),
+            radialPoint(
+              axis, direction, inner, -offset, middle
+            ),
+            stairWidth,
+            "階段 · 1F ↔ 2F"
+          );
+
+          stairFlight(
+            radialPoint(
+              axis, direction, inner, offset, middle
+            ),
+            radialPoint(
+              axis, direction, roomHalf, offset, upper
+            ),
+            stairWidth,
+            "階段 · 2F ↔ 3F"
+          );
+
+          stairCount += 2;
+
+          const rotation = axis === "x"
+            ? direction * Math.PI / 2
+            : direction === 1 ? 0 : Math.PI;
+
+          for (const entry of [
+            { side: -offset, text: "1F ↓" },
+            { side: offset, text: "3F ↑" }
+          ]) {
+            const p = radialPoint(
+              axis,
+              direction,
+              inner + 0.04,
+              entry.side,
+              middle + 2.05
+            );
+
+            sign(
+              entry.text,
+              p.x,
+              p.y,
+              p.z,
+              rotation,
+              0.88,
+              0.3,
+              "guide"
+            );
+          }
+        }
+
+        // 回廊の各辺の中央。
+        wallSign("A", "east", outer, 0, middle + 1.85);
+        wallSign("C", "west", -outer, 0, middle + 1.85);
+        wallSign("D", "north", -outer, 0, middle + 1.85);
+        wallSign("F", "south", outer, 0, middle + 1.85);
+
+        // 図面の右奥と左手前の頂点付近。
+        wallSign("B", "east", outer, -8.65, middle + 1.85);
+        wallSign("E", "west", -outer, 8.65, middle + 1.85);
+
+        // 1Fと3Fの看板。階段の開口部を避けて配置。
+        wallSign("H", "north", -roomHalf, 1.6, 1.85);
+        wallSign("G", "north", -roomHalf, -1.6, upper + 1.85);
+
+        welcome(
+          0,
+          middle + 1.28,
+          -outer + 0.09,
+          0,
+          2.4
+        );
+
+        // A付近からBの方向を見る。
+        return {
+          x: 8.5,
+          z: 0,
+          foot: middle,
+          yaw: 0,
+          floor: "2F · 回廊"
+        };
+      }
+      /*
+       * ステージ④:
+       * 幅のある直線通路の前後を周期的につなぐ。
+       *
+       * 基本領域:
+       *   x ∈ [-2.2, 2.2]
+       *   z ∈ [-16, 16]
+       *
+       * z = -16 と z = 16 は同じ場所。
+       * 中央に床から天井まで届く柱を置く。
+       *
+       * 北向きに進むと、
+       * A → B → C → D → E → F → G → H → A
+       * の順で周回する。
+       */
+      function buildStageFour() {
+        const halfWidth = 2.2;
+        const halfLength = 16;
+        const period = halfLength * 2;
+        const roomHeight = 2.9;
+        const pillarHalf = 0.38;
+
+        floorRect(
+          -halfWidth,
+          -halfLength,
+          halfWidth,
+          halfLength,
+          0,
+          "1F"
+        );
+
+        ceilingRect(
+          -halfWidth,
+          -halfLength,
+          halfWidth,
+          halfLength,
+          roomHeight
+        );
+
+        // 左右の壁だけを作る。
+        // 通路の前後には壁を作らない。
+        wallLine(
+          { x: -halfWidth, z: -halfLength },
+          { x: -halfWidth, z: halfLength },
+          0,
+          roomHeight
+        );
+
+        wallLine(
+          { x: halfWidth, z: -halfLength },
+          { x: halfWidth, z: halfLength },
+          0,
+          roomHeight
+        );
+
+        // 床から天井まで伸びる四角い柱。
+        // 内部は通れず、左右から回り込める。
+        wallLine(
+          { x: -pillarHalf, z: -pillarHalf },
+          { x: pillarHalf, z: -pillarHalf },
+          0,
+          roomHeight
+        );
+
+        wallLine(
+          { x: pillarHalf, z: -pillarHalf },
+          { x: pillarHalf, z: pillarHalf },
+          0,
+          roomHeight
+        );
+
+        wallLine(
+          { x: pillarHalf, z: pillarHalf },
+          { x: -pillarHalf, z: pillarHalf },
+          0,
+          roomHeight
+        );
+
+        wallLine(
+          { x: -pillarHalf, z: pillarHalf },
+          { x: -pillarHalf, z: -pillarHalf },
+          0,
+          roomHeight
+        );
+
+        // Aは柱の、開始地点から見える面に1つだけ配置。
+        sign(
+          "A",
+          0,
+          1.85,
+          pillarHalf + 0.085,
+          0,
+          0.5,
+          0.38
+        );
+
+        /*
+         * B〜Hは床の表示。
+         * 北向きに進んだときに読みやすい向きにする。
+         *
+         * Eは基本領域の境界に置く。
+         * 描画用の隣接領域にまたがるが、
+         * 空間内では1枚の看板である。
+         */
+        const floorLetters = [
+          { letter: "B", z: -4 },
+          { letter: "C", z: -8 },
+          { letter: "D", z: -12 },
+          { letter: "E", z: -16 },
+          { letter: "F", z: 12 },
+          { letter: "G", z: 8 },
+          { letter: "H", z: 4 }
+        ];
+
+        for (const entry of floorLetters) {
+          sign(
+            entry.letter,
+            0,
+            0.018,
+            entry.z,
+            0,
+            0.88,
+            0.64
+          );
+
+          // sign() が最後に追加した看板を床へ寝かせる。
+          const mesh = world.children[
+            world.children.length - 1
+          ];
+
+          mesh.rotation.set(-Math.PI / 2, 0, 0);
+        }
+
+        // 図面の左側の壁に、控えめな歓迎文。
+        welcome(
+          -halfWidth + 0.085,
+          1.65,
+          -3,
+          Math.PI / 2,
+          2.8
+        );
+
+        /*
+         * 視界を途切れさせないための描画用コピー。
+         *
+         * プレイヤーの座標は1周期に折り返す。
+         * コピーは別ステージや別の穴を追加するものではなく、
+         * 同じ空間を周回方向に見せるためのもの。
+         *
+         * 前後3周期まで描画すれば、
+         * 既存の霧の距離よりも十分遠くまで通路が続く。
+         */
+        const originalObjects = world.children.slice();
+        const originalSurfaces = surfaces.slice();
+        const originalBarriers = barriers.slice();
+
+        for (const tile of [-3, -2, -1, 1, 2, 3]) {
+          const shift = tile * period;
+          const group = new THREE.Group();
+
+          for (const object of originalObjects) {
+            group.add(object.clone(true));
+          }
+
+          group.position.z = shift;
+          world.add(group);
+
+          /*
+           * 境界をまたぐ移動中も衝突判定できるように、
+           * 隣接領域の歩行面も登録する。
+           */
+          for (const surface of originalSurfaces) {
+            surfaces.push({
+              ...surface,
+              z0: surface.z0 + shift,
+              z1: surface.z1 + shift,
+              heightAt: (x, z) => {
+                return surface.heightAt(x, z - shift);
+              }
+            });
+          }
+
+          for (const barrier of originalBarriers) {
+            barriers.push({
+              ...barrier,
+              a: {
+                x: barrier.a.x,
+                z: barrier.a.z + shift
+              },
+              b: {
+                x: barrier.b.x,
+                z: barrier.b.z + shift
+              }
+            });
+          }
+        }
+
+        /*
+         * letters 配列に登録するのは基本領域のA〜Hだけ。
+         * 描画用コピーは看板の追加として数えない。
+         */
+        return {
+          x: 0,
+          z: 1.65,
+          foot: 0,
+          yaw: 0,
+          floor: "1F",
+          periodZ: period
+        };
+      }
+      /*
+       * ステージの破棄と切り替え。
+       */
+      function disposeWorld() {
+        world.traverse((object) => {
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+        });
+
+        for (const material of ownedMaterials) {
+          material.dispose();
+        }
+
+        for (const texture of ownedTextures) {
+          texture.dispose();
+        }
+
+        scene.remove(world);
+        world = new THREE.Group();
+        scene.add(world);
+
+        surfaces = [];
+        barriers = [];
+        letters = [];
+        stairCount = 0;
+        ownedMaterials = [];
+        ownedTextures = [];
+      }
+
+      function loadStage(index, announce = true) {
+        if (!STAGES[index]?.ready) {
+          showToast("このステージは準備中です。");
+          return;
+        }
+
+        animation = null;
+
+        expansion.reset();
+        disposeWorld();
+        makeMaterials();
+
+        let start;
+
+        if (index < 4) {
+          const builders = [
+            buildStageOne,
+            buildStageTwo,
+            buildStageThree,
+            buildStageFour
+          ];
+
+          start = builders[index]();
+        } else if (index === 6) {
+          start = expansion.buildSeven();
+        } else {
+          start = expansion.build(index + 1);
+        }
+
+        if (!expansion.active) {
+          if (
+            letters.slice().sort().join("") !== "ABCDEFGH"
+          ) {
+            throw new Error(
+              "A〜Hの配置に重複または不足があります。"
+            );
+          }
+
+          const expectedStairs = index === 6
+            ? 5
+            : [0, 4, 8, 0][index];
+
+          if (stairCount !== expectedStairs) {
+            throw new Error(
+              "階段の接続本数が一致しません。"
+            );
+          }
+        }
+
+        Object.assign(state, start, {
+          stage: index,
+          started: true,
+          completed: false,
+          periodZ: start.periodZ || 0,
+          dirty: true
+        });
+
+        document.getElementById("stage-number").textContent =
+          `STAGE ${String(index + 1).padStart(2, "0")} / 10`;
+
+        document.getElementById("answer-list").scrollLeft = 0;
+
+        if (announce) {
+          showToast(
+            `ステージ${index + 1}：探索してH₁を答えてください。`
+          );
+        }
+      }
+
+      /*
+       * 衝突判定。
+       */
+      function findSurface(x, z, referenceY, tolerance = 0.32) {
+        let nearest = null;
+        let bestDifference = Infinity;
+
+        for (const surface of surfaces) {
+          if (
+            x < surface.x0 - 0.0001
+            || x > surface.x1 + 0.0001
+            || z < surface.z0 - 0.0001
+            || z > surface.z1 + 0.0001
+          ) {
+            continue;
+          }
+
+          const y = surface.heightAt(x, z);
+          const difference = Math.abs(y - referenceY);
+
+          if (
+            difference <= tolerance
+            && difference < bestDifference
+          ) {
+            bestDifference = difference;
+            nearest = { y, label: surface.label };
+          }
+        }
+
+        return nearest;
+      }
+
+      function barrierCollision(x, z, footY) {
+        for (const barrier of barriers) {
+          const dx = barrier.b.x - barrier.a.x;
+          const dz = barrier.b.z - barrier.a.z;
+          const lengthSquared = dx * dx + dz * dz;
+
+          const t = Math.max(
+            0,
+            Math.min(
+              1,
+              (
+                (x - barrier.a.x) * dx
+                + (z - barrier.a.z) * dz
+              ) / lengthSquared
+            )
+          );
+
+          const nearestX = barrier.a.x + dx * t;
+          const nearestZ = barrier.a.z + dz * t;
+
+          const distance = Math.hypot(
+            x - nearestX,
+            z - nearestZ
+          );
+
+          if (
+            distance
+            >= PLAYER.radius + barrier.thickness / 2
+          ) {
+            continue;
+          }
+
+          const bottom = barrier.bottom(t);
+          const top = barrier.top(t);
+
+          /*
+           * 足元の小さい段差はまたげるようにし、
+           * 上階の床端に下階の壁が接する箇所でも
+           * 階段を最後まで上れるようにする。
+           */
+          if (
+            footY + 0.25 < top
+            && footY + PLAYER.eye + 0.1 > bottom
+          ) {
+            return true;
+          }
+        }
+
+        return false;
+      }
+
+      function canOccupy(x, z, referenceY) {
+        const support = findSurface(x, z, referenceY);
+
+        if (!support) {
+          return null;
+        }
+
+        const r = PLAYER.radius * 0.9;
+
+        for (const [dx, dz] of [
+          [r, 0],
+          [-r, 0],
+          [0, r],
+          [0, -r]
+        ]) {
+          if (!findSurface(x + dx, z + dz, support.y, 0.36)) {
+            return null;
+          }
+        }
+
+        if (barrierCollision(x, z, support.y)) {
+          return null;
+        }
+
+        return support;
+      }
+
+      /*
+       * 移動アニメーション。
+       * 進行経路を細かく検査し、壁抜けと転落を防止する。
+       */
+      function canOperate() {
+        return (
+          state.started
+          && !state.completed
+          && !modal.open
+          && animation === null
+        );
+      }
+
+      function forward() {
+        if (!canOperate()) {
+          return;
+        }
+
+        let path;
+
+        if (expansion.active) {
+          path = expansion.planMove(
+            state,
+            PLAYER.step
+          );
+        } else {
+          const dx = Math.sin(state.yaw);
+          const dz = -Math.cos(state.yaw);
+          const samples = 65;
+
+          path = [{
+            x: state.x,
+            z: state.z,
+            foot: state.foot,
+            floor: state.floor
+          }];
+
+          let previousY = state.foot;
+
+          for (let i = 1; i <= samples; i++) {
+            const distance = PLAYER.step * i / samples;
+            const x = state.x + dx * distance;
+            const z = state.z + dz * distance;
+
+            const support = canOccupy(
+              x,
+              z,
+              previousY
+            );
+
+            if (!support) {
+              break;
+            }
+
+            path.push({
+              x,
+              z,
+              foot: support.y,
+              floor: support.label
+            });
+
+            previousY = support.y;
+          }
+        }
+
+        if (path.length < 3) {
+          showToast(
+            "壁・柱・手すりがあり、これ以上は進めません。"
+          );
+          return;
+        }
+
+        animation = {
+          type: "move",
+          start: performance.now(),
+          duration: PLAYER.moveTime,
+          path
+        };
+      }
+
+      function turn(direction) {
+        if (!canOperate()) {
+          return;
+        }
+
+        animation = {
+          type: "turn",
+          start: performance.now(),
+          duration: PLAYER.turnTime,
+          from: state.yaw,
+          to: state.yaw + direction * Math.PI / 2
+        };
+      }
+
+      function updateAnimation(now) {
+        if (!animation) {
+          return;
+        }
+
+        const t = Math.min(
+          1,
+          (now - animation.start) / animation.duration
+        );
+
+        const eased = t * t * (3 - 2 * t);
+
+        if (animation.type === "turn") {
+          state.yaw = animation.from
+            + (animation.to - animation.from) * eased;
+        } else {
+          const position = eased
+            * (animation.path.length - 1);
+
+          const i = Math.floor(position);
+
+          const next = Math.min(
+            i + 1,
+            animation.path.length - 1
+          );
+
+          const fraction = position - i;
+          const a = animation.path[i];
+          const b = animation.path[next];
+
+          state.x = a.x + (b.x - a.x) * fraction;
+          state.z = a.z + (b.z - a.z) * fraction;
+
+          state.foot = a.foot
+            + (b.foot - a.foot) * fraction;
+
+          state.floor = b.floor;
+        }
+
+        state.dirty = true;
+
+        if (t === 1) {
+          state.yaw = Math.atan2(
+            Math.sin(state.yaw),
+            Math.cos(state.yaw)
+          );
+
+          // ステージ④の周期境界。
+          if (state.periodZ > 0) {
+            const period = state.periodZ;
+            const half = period / 2;
+
+            state.z = (
+              (
+                (state.z + half) % period
+                + period
+              ) % period
+            ) - half;
+          }
+
+          animation = null;
+
+          // ⑤以降の周期境界・球面の折り畳み・階段接続。
+          expansion.settle(state);
+        }
+      }
+
+      function finishAnimation() {
+        if (animation) {
+          updateAnimation(animation.start + animation.duration);
+        }
+      }
+
+      function render() {
+        expansion.prepareFrame(state);
+
+        camera.position.set(
+          state.x,
+          state.foot + PLAYER.eye,
+          state.z
+        );
+
+        camera.lookAt(
+          state.x + Math.sin(state.yaw),
+          state.foot + PLAYER.eye,
+          state.z - Math.cos(state.yaw)
+        );
+
+        floorLabel.textContent = state.floor;
+        renderer.render(scene, camera);
+      }
+
+      function resize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+
+        // 縦持ちで視野が狭くなりすぎないように調整。
+        camera.fov = width < height ? 82 : 68;
+        camera.updateProjectionMatrix();
+        state.dirty = true;
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("visible");
+
+        toastTimer = setTimeout(() => {
+          toast.classList.remove("visible");
+        }, 2300);
+      }
+
+      function openDialog(title, body, actions, cancel = null) {
+        finishAnimation();
+
+        document.getElementById("dialog-title").textContent =
+          title;
+
+        document.getElementById("dialog-body").textContent =
+          body;
+
+        const container = document.getElementById(
+          "dialog-actions"
+        );
+
+        container.replaceChildren();
+        cancelDialogAction = cancel;
+
+        for (const action of actions) {
+          const button = document.createElement("button");
+
+          button.type = "button";
+          button.textContent = action.label;
+          button.disabled = Boolean(action.disabled);
+
+          if (action.primary) {
+            button.classList.add("primary");
+          }
+
+          button.addEventListener("click", () => {
+            modal.close();
+            action.run();
+          });
+
+          container.appendChild(button);
+        }
+
+        if (!modal.open) {
+          modal.showModal();
+        }
+
+        container.querySelector(
+          ".primary:not(:disabled), button:not(:disabled)"
+        )?.focus();
+      }
+
+      modal.addEventListener("cancel", (event) => {
+        event.preventDefault();
+
+        if (cancelDialogAction) {
+          const action = cancelDialogAction;
+          modal.close();
+          action();
+        }
+      });
+
+      function title() {
+        state.started = false;
+
+        const actions = STAGES.map((stage, index) => {
+          return {
+            label: `ステージ${stage.id}`,
+            primary: index === 0,
+            run: () => loadStage(index)
+          };
+        });
+
+        openDialog(
+          "渋山駅からの脱出",
+          "あなたは渋山駅の地下通路に閉じ込められてしまった。"
+            + "\n通路を探索し、整数係数の第1ホモロジー群を"
+            + "正しく答えると脱出できる。"
+            + "\n\n↑ / W：進む"
+            + "\n← / A・→ / D：90度向きを変える"
+            + "\nEsc：中断・ギブアップ"
+            + "\n\n階段は進む操作で上り下りできます。"
+            + "\n「階段」と書かれた床のパネルは、"
+            + "踏み込むと階段区間につながります。"
+            + "\n\n探索するステージを選んでください。",
+          actions
+        );
+      }
+
+      function answer(choice) {
+        if (
+          !state.started
+          || state.completed
+          || modal.open
+        ) {
+          return;
+        }
+
+        const stage = STAGES[state.stage];
+
+        if (choice.id !== stage.answer) {
+          showToast(
+            `${choice.label} ではありません。探索を続けてください。`
+          );
+          return;
+        }
+
+        state.completed = true;
+        const nextIndex = state.stage + 1;
+
+        const actions = [
+          {
+            label: "タイトルへ",
+            run: title
+          },
+          {
+            label: "もう一度探索",
+            run: () => loadStage(state.stage)
+          }
+        ];
+
+        let ending = "";
+
+        if (STAGES[nextIndex]?.ready) {
+          actions.push({
+            label: `ステージ${nextIndex + 1}へ`,
+            primary: true,
+            run: () => loadStage(nextIndex)
+          });
+        } else if (nextIndex === STAGES.length) {
+          ending =
+            "\n\n最終ステージから脱出しました。"
+            + "\n渋山駅の出口が開きました。";
+        } else {
+          ending = "\n\n次のステージは準備中です。";
+        }
+
+        openDialog(
+          `ステージ${stage.id} 脱出成功`,
+          `正解！ H₁(X; ℤ) ≅ ${choice.label}`
+            + "\n\n"
+            + stage.explanation
+            + ending,
+          actions
+        );
+      }
+
+      function giveUp() {
+        state.completed = true;
+
+        const stage = STAGES[state.stage];
+        const correct = CHOICES.find(
+          (choice) => choice.id === stage.answer
+        );
+
+        openDialog(
+          "探索終了",
+          `答えは H₁(X; ℤ) ≅ ${correct.label} です。`
+            + "\n\n"
+            + stage.explanation,
+          [
+            {
+              label: "タイトルへ",
+              run: title
+            },
+            {
+              label: "やり直す",
+              primary: true,
+              run: () => loadStage(state.stage)
+            }
+          ]
+        );
+      }
+
+      function escape() {
+        if (modal.open || !state.started) {
+          return;
+        }
+
+        openDialog(
+          "探索を中断しますか？",
+          "ギブアップすると正解を表示して探索を終了します。",
+          [
+            {
+              label: "ギブアップ",
+              run: giveUp
+            },
+            {
+              label: "タイトルへ",
+              run: title
+            },
+            {
+              label: "探索に戻る",
+              primary: true,
+              run: () => {}
+            }
+          ],
+          () => {}
+        );
+      }
+
+      function buildAnswerButtons() {
+        const list = document.getElementById("answer-list");
+
+        for (const choice of CHOICES) {
+          const button = document.createElement("button");
+
+          button.type = "button";
+          button.className = "answer";
+
+          if (choice.rank) {
+            button.appendChild(document.createTextNode("ℤ"));
+
+            const exponent = document.createElement("sup");
+            exponent.textContent = String(choice.rank);
+            button.appendChild(exponent);
+          } else {
+            button.textContent = choice.label;
+          }
+
+          button.setAttribute(
+            "aria-label",
+            `第1ホモロジー群を ${choice.label} と回答`
+          );
+
+          button.addEventListener("click", () => answer(choice));
+          list.appendChild(button);
+        }
+
+        list.addEventListener(
+          "wheel",
+          (event) => {
+            if (
+              list.scrollWidth > list.clientWidth
+              && Math.abs(event.deltaY) > Math.abs(event.deltaX)
+            ) {
+              list.scrollLeft += event.deltaY;
+              event.preventDefault();
+            }
+          },
+          { passive: false }
+        );
+      }
+
+      document.getElementById("forward").addEventListener(
+        "click",
+        forward
+      );
+
+      document.getElementById("left-turn").addEventListener(
+        "click",
+        () => turn(-1)
+      );
+
+      document.getElementById("right-turn").addEventListener(
+        "click",
+        () => turn(1)
+      );
+
+      document.getElementById("escape").addEventListener(
+        "click",
+        escape
+      );
+
+      window.addEventListener("keydown", (event) => {
+        if (modal.open) {
+          return;
+        }
+
+        const key = event.key.toLowerCase();
+
+        if (
+          [
+            "arrowup",
+            "arrowleft",
+            "arrowright",
+            "w",
+            "a",
+            "d",
+            "escape"
+          ].includes(key)
+        ) {
+          event.preventDefault();
+        }
+
+        if (key === "escape") {
+          escape();
+        } else if (key === "arrowup" || key === "w") {
+          forward();
+        } else if (
+          (key === "arrowleft" || key === "a")
+          && !event.repeat
+        ) {
+          turn(-1);
+        } else if (
+          (key === "arrowright" || key === "d")
+          && !event.repeat
+        ) {
+          turn(1);
+        }
+      });
+
+      window.addEventListener("resize", resize);
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          finishAnimation();
+        } else {
+          state.dirty = true;
+        }
+      });
+
+      canvas.addEventListener("webglcontextlost", (event) => {
+        event.preventDefault();
+        showToast(
+          "3D描画が中断されました。ページを再読み込みしてください。"
+        );
+      });
+
+      function frame(now) {
+        updateAnimation(now);
+
+        if (state.dirty) {
+          render();
+          state.dirty = false;
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      const expansion = createExpansion(THREE, {
+        scene,
+        floorRect,
+        ceilingRect,
+        boundary,
+        wallLine,
+        stairFlight,
+        wallSign,
+        notify: showToast,
+        countStair: () => {
+          stairCount++;
+        }
+      });
+
+      buildAnswerButtons();
+      resize();
+      loadStage(0, false);
+      loading.hidden = true;
+      title();
+      requestAnimationFrame(frame);
+    }
+  </script>
+</body>
+</html>
