@@ -1,2619 +1,2847 @@
-<!-- File: sequent-game-unified-v3.html -->
+<!-- File: sequent-game-unified-v5.html -->
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>シーケント証明ゲーム（命題論理・1階述語論理）</title>
-<style>
-  :root {
-    --bg: #1d2230;
-    --panel: #272e42;
-    --text: #e8ebf4;
-    --muted: #98a2bd;
-    --accent: #ffd166;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: system-ui, "Hiragino Sans", "Yu Gothic", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
-  header {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 10px 18px;
-    background: #141824;
-    flex-wrap: wrap;
-  }
-  header h1 { font-size: 18px; margin: 0; }
-  .stat { font-size: 14px; color: var(--muted); }
-  .stat b { color: var(--accent); font-size: 18px; }
-  button {
-    font: inherit;
-    cursor: pointer;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    background: #3b4666;
-    color: var(--text);
-  }
-  button:hover { background: #4b5886; }
-  button.primary { background: #e07a1f; font-weight: bold; }
-  button.primary:hover { background: #f08a2f; }
-  #start, #game { max-width: 1320px; margin: 0 auto; padding: 16px; }
-  #game { display: none; }
-  .card {
-    background: var(--panel);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 14px;
-  }
-  .card h2 { margin: 0 0 10px; font-size: 16px; }
-  .grouphead {
-    margin: 12px 0 4px;
-    font-size: 13px;
-    color: var(--accent);
-    border-bottom: 1px solid #3b4666;
-    padding-bottom: 2px;
-  }
-  .grouphead:first-of-type { margin-top: 0; }
-  label.opt {
-    display: block;
-    padding: 8px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  label.opt:hover { background: #313a55; }
-  label.opt small { color: var(--muted); display: block; margin-left: 24px; }
-
-  #theorem {
-    font-size: 24px;
-    font-family: "Cambria Math", "STIX Two Math", serif;
-    color: var(--accent);
-    text-align: center;
-    padding: 10px;
-  }
-  #layout { display: flex; gap: 14px; align-items: flex-start; }
-  #palette { width: 290px; flex-shrink: 0; position: sticky; top: 10px; max-height: 94vh; overflow-y: auto; }
-  #workspace { flex: 1; min-width: 0; overflow-x: auto; }
-  #palette h2.sub { margin-top: 16px; }
-  .note { color: var(--muted); font-size: 12px; line-height: 1.5; }
-
-  .block {
-    display: block;
-    margin: 5px 0;
-    padding: 6px 12px;
-    border-radius: 8px;
-    color: #111;
-    font-weight: bold;
-    cursor: grab;
-    user-select: none;
-    border-left: 8px solid rgba(0, 0, 0, .25);
-    box-shadow: 0 2px 0 rgba(0, 0, 0, .35);
-  }
-  .block small { font-weight: normal; display: block; font-size: 11px; opacity: .8; }
-  .block.armed { outline: 3px solid #fff; transform: translateX(6px); }
-
-  .c-id { background: #8ecf8e; }
-  .c-eq { background: #c9d96a; }
-  .c-and { background: #7cc3f2; }
-  .c-or { background: #f2a97c; }
-  .c-imp { background: #d79bf0; }
-  .c-bot { background: #f08a8a; }
-  .c-all { background: #f2d36b; }
-  .c-ex { background: #6fd9c8; }
-  .c-wk { background: #b8bfd0; }
-  .c-ax { background: #ffb3c7; }
-
-  .libitem {
-    margin: 5px 0;
-    padding: 6px 10px;
-    border-radius: 8px;
-    background: #ffb3c7;
-    color: #111;
-    cursor: grab;
-    user-select: none;
-    border-left: 8px solid rgba(0, 0, 0, .25);
-    box-shadow: 0 2px 0 rgba(0, 0, 0, .35);
-  }
-  .libitem.k-lemma { background: #ffd6a5; }
-  .libitem.k-schema { background: #cdb4ff; }
-  .libitem.armed { outline: 3px solid #fff; transform: translateX(6px); }
-  .libname { font-weight: bold; font-size: 13px; }
-  .libf {
-    font-family: "Cambria Math", "STIX Two Math", serif;
-    font-size: 13px;
-    word-break: break-all;
-    margin-top: 2px;
-  }
-
-  .node { margin: 6px 0; }
-  .goal {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-family: "Cambria Math", "STIX Two Math", serif;
-    font-size: 16px;
-    flex-wrap: wrap;
-  }
-  .goal.open { background: #3a2f2f; border: 2px dashed #ff8a65; }
-  .goal.open.hot { background: #4a3a30; }
-  .goal.done { background: #2b3550; border: 2px solid #4a5a8a; }
-  .children {
-    margin-left: 22px;
-    padding-left: 14px;
-    border-left: 4px solid #4a5a8a;
-  }
-  .chip {
-    display: inline-block;
-    padding: 1px 8px;
-    margin: 2px 2px;
-    border-radius: 12px;
-    background: #404a6a;
-    cursor: pointer;
-  }
-  .goal.done .chip { cursor: default; background: #343e5c; }
-  .chip.cand { background: #6a5a20; outline: 2px solid var(--accent); }
-  .chip.sel { background: #2e7d32; outline: 2px solid #9be29f; }
-  .chip.over { background: #8a7a30; }
-  .turnstile { color: var(--accent); font-weight: bold; margin: 0 6px; }
-  .ruletag {
-    font-size: 13px;
-    padding: 2px 8px;
-    border-radius: 6px;
-    color: #111;
-    font-weight: bold;
-    font-family: system-ui, sans-serif;
-  }
-  .ruletag button {
-    padding: 0 5px;
-    margin-left: 4px;
-    background: rgba(0, 0, 0, .2);
-    color: #111;
-    font-size: 12px;
-  }
-  #toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #000c;
-    padding: 10px 18px;
-    border-radius: 8px;
-    opacity: 0;
-    transition: opacity .25s;
-    pointer-events: none;
-    max-width: 90%;
-    z-index: 30;
-  }
-  #toast.show { opacity: 1; }
-  #toast.good { background: #1f7a3acc; }
-  #toast.bad { background: #a02828cc; }
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: #000b;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-  }
-  #modal, #axmodal { z-index: 20; }
-  .overlay .box {
-    background: var(--panel);
-    padding: 24px 32px;
-    border-radius: 12px;
-    max-width: 680px;
-    width: 92%;
-    max-height: 84vh;
-    overflow: auto;
-  }
-  .overlay ul { padding-left: 20px; font-family: "Cambria Math", serif; }
-  #mdFormula, #amFormula, #amPreview {
-    font-family: "Cambria Math", "STIX Two Math", serif;
-    font-size: 18px;
-    color: var(--accent);
-    margin-bottom: 10px;
-  }
-  #amPreview { margin: 10px 0; min-height: 1.4em; }
-  #amPreview.err { color: #ff8a80; font-size: 14px; }
-  #mdSug, #amSug {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    max-height: 200px;
-    overflow-y: auto;
-    margin: 10px 0;
-  }
-  #mdSug button, #amSug button { font-family: "Cambria Math", "STIX Two Math", serif; font-size: 15px; }
-  #mdSug button.fresh { background: #2e5d4d; }
-  #mdInput, .aminput {
-    font: inherit;
-    font-family: "Cambria Math", "STIX Two Math", serif;
-    padding: 6px 10px;
-    width: 260px;
-    border-radius: 6px;
-    border: 1px solid #556;
-    background: #1a2030;
-    color: var(--text);
-  }
-  .amrow { margin: 6px 0; display: flex; align-items: center; gap: 8px; }
-  .amrow label { min-width: 70px; font-family: "Cambria Math", serif; }
-  .aminput { width: 360px; max-width: 100%; }
-  details { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 8px; }
-  details code { color: var(--text); }
-  .rulelist { font-family: "Cambria Math", "STIX Two Math", serif; font-size: 14px; }
-
-
-  .ranking-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    min-height: 220px;
-    margin: 20px 0;
-    padding: 32px 20px;
-    border: 1px solid rgba(255, 209, 102, 0.4);
-    border-radius: 14px;
-    background: linear-gradient(
-      135deg,
-      rgba(255, 209, 102, 0.08),
-      rgba(124, 195, 242, 0.08)
-    );
-    text-align: center;
-  }
-
-  /* display: flex が hidden 属性を上書きしないようにする */
-  .ranking-loading[hidden] {
-    display: none;
-  }
-
-  .ranking-spinner {
-    width: 58px;
-    height: 58px;
-    border: 5px solid rgba(255, 209, 102, 0.18);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: ranking-spin 0.9s linear infinite;
-  }
-
-  .ranking-loading-title {
-    margin: 0;
-    color: var(--accent);
-    font-size: clamp(18px, 4vw, 24px);
-    font-weight: bold;
-  }
-
-  .ranking-loading-note {
-    margin: 0;
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.6;
-  }
-
-  @keyframes ranking-spin {
-    from {
-      transform: rotate(0deg);
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>シーケント証明ゲーム（命題論理・1階述語論理）</title>
+  <style>
+    :root {
+      --bg: #1d2230;
+      --panel: #272e42;
+      --text: #e8ebf4;
+      --muted: #98a2bd;
+      --accent: #ffd166;
+      --header-h: 56px;
     }
 
-    to {
-      transform: rotate(360deg);
+    * {
+      box-sizing: border-box;
     }
-  }
 
-  /* 動きを抑える設定の利用者には、静止した表示にする */
-  @media (prefers-reduced-motion: reduce) {
+    body {
+      margin: 0;
+      font-family: system-ui, "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 18px;
+      min-height: var(--header-h);
+      background: #141824;
+      border-bottom: 1px solid #2a3350;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .stat {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .stat b {
+      color: var(--accent);
+      font-size: 18px;
+    }
+
+    .stat.time b {
+      font-size: 22px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat.time.low b {
+      color: #ff6b6b;
+      animation: blink 1s steps(2, start) infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: .45;
+      }
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      background: #3b4666;
+      color: var(--text);
+    }
+
+    button:hover {
+      background: #4b5886;
+    }
+
+    button.primary {
+      background: #e07a1f;
+      font-weight: bold;
+    }
+
+    button.primary:hover {
+      background: #f08a2f;
+    }
+
+    #start,
+    #game {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    #game {
+      display: none;
+    }
+
+    .card {
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .grouphead {
+      margin: 12px 0 4px;
+      font-size: 13px;
+      color: var(--accent);
+      border-bottom: 1px solid #3b4666;
+      padding-bottom: 2px;
+    }
+
+    .grouphead:first-of-type {
+      margin-top: 0;
+    }
+
+    label.opt {
+      display: block;
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    label.opt:hover {
+      background: #313a55;
+    }
+
+    label.opt small {
+      color: var(--muted);
+      display: block;
+      margin-left: 24px;
+    }
+
+    #theorem {
+      font-size: 24px;
+      font-family: "Cambria Math", "STIX Two Math", serif;
+      color: var(--accent);
+      text-align: center;
+      padding: 10px;
+    }
+
+    #layout {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    #palette {
+      width: 290px;
+      flex-shrink: 0;
+      position: sticky;
+      top: calc(var(--header-h) + 10px);
+      max-height: calc(100vh - var(--header-h) - 24px);
+      overflow-y: auto;
+    }
+
+    #workspace {
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+    }
+
+    #palette h2.sub {
+      margin-top: 16px;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .block {
+      display: block;
+      margin: 5px 0;
+      padding: 6px 12px;
+      border-radius: 8px;
+      color: #111;
+      font-weight: bold;
+      cursor: grab;
+      user-select: none;
+      border-left: 8px solid rgba(0, 0, 0, .25);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, .35);
+    }
+
+    .block small {
+      font-weight: normal;
+      display: block;
+      font-size: 11px;
+      opacity: .8;
+    }
+
+    .block.armed {
+      outline: 3px solid #fff;
+      transform: translateX(6px);
+    }
+
+    .c-id {
+      background: #8ecf8e;
+    }
+
+    .c-eq {
+      background: #c9d96a;
+    }
+
+    .c-and {
+      background: #7cc3f2;
+    }
+
+    .c-or {
+      background: #f2a97c;
+    }
+
+    .c-imp {
+      background: #d79bf0;
+    }
+
+    .c-bot {
+      background: #f08a8a;
+    }
+
+    .c-all {
+      background: #f2d36b;
+    }
+
+    .c-ex {
+      background: #6fd9c8;
+    }
+
+    .c-wk {
+      background: #b8bfd0;
+    }
+
+    .c-ax {
+      background: #ffb3c7;
+    }
+
+    .libitem {
+      margin: 5px 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #ffb3c7;
+      color: #111;
+      cursor: grab;
+      user-select: none;
+      border-left: 8px solid rgba(0, 0, 0, .25);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, .35);
+    }
+
+    .libitem.k-lemma {
+      background: #ffd6a5;
+    }
+
+    .libitem.k-schema {
+      background: #cdb4ff;
+    }
+
+    .libitem.armed {
+      outline: 3px solid #fff;
+      transform: translateX(6px);
+    }
+
+    .libname {
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .libf {
+      font-family: "Cambria Math", "STIX Two Math", serif;
+      font-size: 13px;
+      word-break: break-all;
+      margin-top: 2px;
+    }
+
+    .node {
+      margin: 6px 0;
+    }
+
+    .goal {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: "Cambria Math", "STIX Two Math", serif;
+      font-size: 16px;
+      flex-wrap: wrap;
+    }
+
+    .goal.open {
+      background: #3a2f2f;
+      border: 2px dashed #ff8a65;
+    }
+
+    .goal.open.hot {
+      background: #4a3a30;
+    }
+
+    .goal.done {
+      background: #2b3550;
+      border: 2px solid #4a5a8a;
+    }
+
+    .children {
+      margin-left: 22px;
+      padding-left: 14px;
+      border-left: 4px solid #4a5a8a;
+    }
+
+    .chip {
+      display: inline-block;
+      padding: 1px 8px;
+      margin: 2px 2px;
+      border-radius: 12px;
+      background: #404a6a;
+      cursor: pointer;
+    }
+
+    .goal.done .chip {
+      cursor: default;
+      background: #343e5c;
+    }
+
+    .chip.cand {
+      background: #6a5a20;
+      outline: 2px solid var(--accent);
+    }
+
+    .chip.sel {
+      background: #2e7d32;
+      outline: 2px solid #9be29f;
+    }
+
+    .chip.over {
+      background: #8a7a30;
+    }
+
+    .turnstile {
+      color: var(--accent);
+      font-weight: bold;
+      margin: 0 6px;
+    }
+
+    .ruletag {
+      font-size: 13px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: #111;
+      font-weight: bold;
+      font-family: system-ui, sans-serif;
+    }
+
+    .ruletag button {
+      padding: 0 5px;
+      margin-left: 4px;
+      background: rgba(0, 0, 0, .2);
+      color: #111;
+      font-size: 12px;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000c;
+      padding: 10px 18px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity .25s;
+      pointer-events: none;
+      max-width: 90%;
+      z-index: 30;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+
+    #toast.good {
+      background: #1f7a3acc;
+    }
+
+    #toast.bad {
+      background: #a02828cc;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: #000b;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    #modal,
+    #axmodal {
+      z-index: 20;
+    }
+
+    .overlay .box {
+      background: var(--panel);
+      padding: 24px 32px;
+      border-radius: 12px;
+      max-width: 680px;
+      width: 92%;
+      max-height: 84vh;
+      overflow: auto;
+    }
+
+    .overlay ul {
+      padding-left: 20px;
+      font-family: "Cambria Math", serif;
+    }
+
+    #mdFormula,
+    #amFormula,
+    #amPreview {
+      font-family: "Cambria Math", "STIX Two Math", serif;
+      font-size: 18px;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    #amPreview {
+      margin: 10px 0;
+      min-height: 1.4em;
+    }
+
+    #amPreview.err {
+      color: #ff8a80;
+      font-size: 14px;
+    }
+
+    #mdSug,
+    #amSug {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 10px 0;
+    }
+
+    #mdSug button,
+    #amSug button {
+      font-family: "Cambria Math", "STIX Two Math", serif;
+      font-size: 15px;
+    }
+
+    #mdSug button.fresh {
+      background: #2e5d4d;
+    }
+
+    #mdInput,
+    .aminput {
+      font: inherit;
+      font-family: "Cambria Math", "STIX Two Math", serif;
+      padding: 6px 10px;
+      width: 260px;
+      border-radius: 6px;
+      border: 1px solid #556;
+      background: #1a2030;
+      color: var(--text);
+    }
+
+    .amrow {
+      margin: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .amrow label {
+      min-width: 70px;
+      font-family: "Cambria Math", serif;
+    }
+
+    .aminput {
+      width: 360px;
+      max-width: 100%;
+    }
+
+    details {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      margin-bottom: 8px;
+    }
+
+    details code {
+      color: var(--text);
+    }
+
+    .rulelist {
+      font-family: "Cambria Math", "STIX Two Math", serif;
+      font-size: 14px;
+    }
+
+
+
+    .ranking-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      min-height: 220px;
+      margin: 20px 0;
+      padding: 32px 20px;
+      border: 1px solid rgba(255, 209, 102, 0.4);
+      border-radius: 14px;
+      background: linear-gradient(135deg,
+          rgba(255, 209, 102, 0.08),
+          rgba(124, 195, 242, 0.08));
+      text-align: center;
+    }
+
+    /* display: flex が hidden 属性を上書きしないようにする */
+    .ranking-loading[hidden] {
+      display: none;
+    }
+
     .ranking-spinner {
-      animation: none;
+      width: 58px;
+      height: 58px;
+      border: 5px solid rgba(255, 209, 102, 0.18);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: ranking-spin 0.9s linear infinite;
     }
-  }
-</style>
 
-<script src="src/score.js"></script>
+    .ranking-loading-title {
+      margin: 0;
+      color: var(--accent);
+      font-size: clamp(18px, 4vw, 24px);
+      font-weight: bold;
+    }
+
+    .ranking-loading-note {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    @keyframes ranking-spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* 動きを抑える設定の利用者には、静止した表示にする */
+    @media (prefers-reduced-motion: reduce) {
+      .ranking-spinner {
+        animation: none;
+      }
+    }
+  </style>
+
+  <script src="src/score.js"></script>
 </head>
+
 <body>
-<header>
-  <h1>⊢ シーケント証明ゲーム</h1>
-  <span class="stat">モード: <b id="stMode">-</b></span>
-  <span class="stat">残り時間: <b id="stTime">-</b></span>
-  <span class="stat">スコア: <b id="stScore">0</b></span>
-  <span class="stat">証明数: <b id="stSolved">0</b></span>
-</header>
+  <header>
+    <h1>⊢ シーケント証明ゲーム</h1>
+    <span class="stat">モード: <b id="stMode">-</b></span>
+    <span class="stat time" id="stTimeWrap">残り時間: <b id="stTime">-</b></span>
+    <span class="stat">スコア: <b id="stScore">0</b></span>
+    <span class="stat">証明数: <b id="stSolved">0</b></span>
+  </header>
 
-<div id="start">
-  <div class="card">
-    <h2>モード選択</h2>
+  <div id="start">
+    <div class="card">
+      <h2>モード選択</h2>
 
-    <div class="grouphead">命題論理（公理なし・論理の違いを楽しむ）</div>
-    <label class="opt">
-      <input type="radio" name="mode" value="LK" checked> 古典論理 (LK)
-      <small>右辺に複数の式を置ける。排中律・二重否定除去・パースの法則が証明可能。</small>
-    </label>
-    <label class="opt">
-      <input type="radio" name="mode" value="LJ"> 直観論理 (LJ)
-      <small>右辺は常に1つの式。⊥L（爆発律）あり。排中律などは証明できない。</small>
-    </label>
-    <label class="opt">
-      <input type="radio" name="mode" value="LM"> 最小論理 (LM)
-      <small>LJから⊥Lを除いたもの。⊥はただの命題変数として扱われ、¬A は A→⊥ の略記。</small>
-    </label>
+      <div class="grouphead">命題論理（公理なし・論理の違いを楽しむ）</div>
+      <label class="opt">
+        <input type="radio" name="mode" value="LK" checked> 古典論理 (LK)
+        <small>右辺に複数の式を置ける。排中律・二重否定除去・パースの法則が証明可能。</small>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="LJ"> 直観論理 (LJ)
+        <small>右辺は常に1つの式。⊥L（爆発律）あり。排中律などは証明できない。</small>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="LM"> 最小論理 (LM)
+        <small>LJから⊥Lを除いたもの。⊥はただの命題変数として扱われ、¬A は A→⊥ の略記。</small>
+      </label>
 
-    <div class="grouphead">1階述語論理（古典論理＋等号＋理論の公理）</div>
-    <label class="opt">
-      <input type="radio" name="mode" value="group"> 群
-      <small>定数 e、二項演算 *、逆元 inv。左単位元・左逆元・結合律。等式の書き換えが主役。</small>
-    </label>
-    <label class="opt">
-      <input type="radio" name="mode" value="graph"> 単純グラフ
-      <small>二項述語 E（辺）。非反射性・対称性。量化子の扱いが主役。</small>
-    </label>
-    <label class="opt">
-      <input type="radio" name="mode" value="order"> 全順序集合
-      <small>二項述語 &lt;。非反射・推移・三分律。公理を何度も使い回す練習に最適。</small>
-    </label>
-    <label class="opt">
-      <input type="radio" name="mode" value="nat"> 自然数（加法）＋帰納法スキーマ
-      <small>0, S, +。帰納法は無限個の公理（スキーマ）。補題を積み上げて、最後に加法の可換性へ。</small>
-    </label>
-    <label class="opt">
-      <input type="radio" name="mode" value="ring"> 可換環
-      <small>0, 1, neg, 中置演算子 + と *（* が優先）。分配律で2つの演算が絡む。補題の積み上げが重要。</small>
-    </label>
-    <label class="opt">
-      <input type="radio" name="mode" value="bool"> ブール代数
-      <small>0, 1, comp, 中置演算子 + （結び）と * （交わり）。2つの分配律と補元だけから冪等律などを導く。</small>
-    </label>
-  </div>
-  <div class="card">
-    <h2>制限時間</h2>
-    <select id="timeSel">
-      <option value="120">2分</option>
-      <option value="180" selected>3分</option>
-      <option value="300">5分</option>
-      <option value="600">10分</option>
-      <option value="1200">20分</option>
-      <option value="0">無制限（練習）</option>
-    </select>
-    <small style="color:var(--muted)">（モードを切り替えると推奨の時間に変わります）</small>
-  </div>
-  <div class="card">
-    <h2>遊び方</h2>
-    <details open>
-      <summary>操作方法</summary>
-      <ol>
-        <li>画面上部の定理を、ゴール側から証明します。点線のゴールが未証明の「穴」です。定理は閉論理式で、ゴールの左辺は空（局所的な仮定だけ）から始まります。</li>
-        <li><b>理論の公理・スキーマ・証明済みの補題</b>は、左側の「公理・補題」ライブラリにまとまっています。使いたいものをクリックして選び、ゴールをクリックすると、その式を左辺に追加できます。</li>
-        <li>追加するとき、先頭の <code>∀</code> に代入する項を指定できます。空欄ならその変数は <code>∀</code> のまま残ります。命題論理の補題では、命題変数に任意の式を代入できます。</li>
-        <li>項は中置演算子で書けます。例: <code>x * y + z</code>（<code>*</code> が <code>+</code> より強く結合）、<code>(x + y) * z</code>、<code>neg(x) + 0</code></li>
-        <li>スキーマ（帰納法など）は、論理式 <code>P(x)</code> を入力してインスタンスを作ります。例: <code>0 + x = x</code></li>
-        <li>定理を1つ証明するたびに、それが<b>補題としてライブラリに追加</b>されます。難しい定理は、先に補題を作ってから挑みましょう。</li>
-        <li>左辺が散らかったら、<code>弱化</code> ブロックで不要な式を捨てられます。</li>
-        <li>ルールブロックをクリックして選び、適用したい式（チップ）をクリックします。ドラッグ＆ドロップも使えます。</li>
-        <li><code>Id</code>、<code>⊥L</code>、<code>Refl</code> はゴール全体に適用します。適用先が1つだけなら、ゴールをクリックするだけで済みます。</li>
-        <li><code>∀L</code> と <code>∃R</code> は項の入力が必要です。<code>∀R</code> と <code>∃L</code> は新しい変数を自動で選びます。</li>
-        <li>書き換え <code>=→</code> / <code>=←</code> は2回クリックします。先に左辺の等式 <code>s = t</code> を選び、次に書き換えたい式を選びます。</li>
-        <li><code>✕</code> でその手とその下の部分を取り消せます。Escキーで選択を解除できます。</li>
-        <li>「自動整理」は、可逆な手と閉じる手を自動で打ちます（−3点）。命題論理モードでは「ヒント」（−5点）も使えます。</li>
-      </ol>
-    </details>
-    <details>
-      <summary>推論規則（G3系：構造規則なし＋公理導入・弱化）</summary>
-      <div class="rulelist">
-        Id: Γ, A ⊢ A, Δ<br>
-        ⊥L: Γ, ⊥ ⊢ Δ （LM以外）<br>
-        ∧R: Γ ⊢ A, Δ と Γ ⊢ B, Δ から Γ ⊢ A∧B, Δ<br>
-        ∧L: Γ, A, B ⊢ Δ から Γ, A∧B ⊢ Δ<br>
-        ∨R (LK): Γ ⊢ A, B, Δ から Γ ⊢ A∨B, Δ<br>
-        ∨R₁/∨R₂ (LJ, LM): Γ ⊢ A（または B）から Γ ⊢ A∨B<br>
-        ∨L: Γ, A ⊢ Δ と Γ, B ⊢ Δ から Γ, A∨B ⊢ Δ<br>
-        →R: Γ, A ⊢ B, Δ から Γ ⊢ A→B, Δ<br>
-        →L (LK): Γ ⊢ A, Δ と Γ, B ⊢ Δ から Γ, A→B ⊢ Δ<br>
-        →L (LJ, LM): Γ, A→B ⊢ A と Γ, B ⊢ C から Γ, A→B ⊢ C<br>
-        弱化: Γ ⊢ Δ から Γ, A ⊢ Δ（左辺の式を捨てる）<br>
-        公理の導入: Γ, A ⊢ Δ から Γ ⊢ Δ （A は公理・補題・スキーマのインスタンス）<br>
-        <br>
-        【公理・補題のインスタンス】<br>
-        ・先頭の ∀x₁…∀xₙ B に対し、項 t₁…tₙ を代入した B[t/x] を導入できる（残した ∀ はそのまま）<br>
-        ・命題論理の補題は、命題変数に任意の式を代入できる<br>
-        ・帰納法スキーマ: P(0) ∧ ∀x (P(x) → P(S(x))) → ∀x P(x)（P は任意の論理式）<br>
-        <br>
-        【1階述語論理のみ】<br>
-        Refl（等号の論理公理）: Γ ⊢ t = t, Δ<br>
-        ∀R（汎化）: Γ ⊢ A[y/x], Δ から Γ ⊢ ∀x A, Δ （y は結論に自由に現れない）<br>
-        ∃L: Γ, A[y/x] ⊢ Δ から Γ, ∃x A ⊢ Δ （y は結論に自由に現れない）<br>
-        ∀L: Γ, ∀x A, A[t/x] ⊢ Δ から Γ, ∀x A ⊢ Δ （t は任意の項）<br>
-        ∃R: Γ ⊢ A[t/x], ∃x A, Δ から Γ ⊢ ∃x A, Δ （t は任意の項）<br>
-        =→ / =←（等号の置換公理）: 左辺に s = t があるとき、同じ側の式 A 内の s（または t）の出現をすべて t（または s）に置き換える。等式自身は対象外。束縛変数による捕獲は禁止<br>
-        <br>
-        ※ 1階述語論理では領域は空でないので、項として使える変数名は自由です。<br>
-        ※ 表示では ∀・∃・¬ は強く結合します。∀x (A ∧ B) のように、二項結合子の式は括弧で囲みます。<br>
-        ※ ¬A は A → ⊥ の略記です。<br>
-        ※ 中置演算子は理論ごとに複数定義でき、優先順位と結合性（既定は左結合）を持ちます。表示では必要な括弧だけが付きます。
-      </div>
-    </details>
-  </div>
-  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-  <button class="primary" id="btnStart" type="button">
-    ゲーム開始
-  </button>
-
-  <button id="btnRankingStart" type="button">
-    ランキングを見る
-  </button>
-</div>
-</div>
-
-<div id="game">
-  <div class="card">
-    <div id="theorem"></div>
-    <div style="text-align:center">
-      <button id="btnHint">ヒント (-5点)</button>
-      <button id="btnAuto">自動整理 (-3点)</button>
-      <button id="btnReset">この問題をやり直す</button>
-      <button id="btnSkip">スキップ</button>
-      <button id="btnQuit">終了</button>
+      <div class="grouphead">1階述語論理（古典論理＋等号＋理論の公理）</div>
+      <label class="opt">
+        <input type="radio" name="mode" value="group"> 群
+        <small>定数 e、二項演算 *、逆元 inv。左単位元・左逆元・結合律。等式の書き換えが主役。</small>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="graph"> 単純グラフ
+        <small>二項述語 E（辺）。非反射性・対称性。量化子の扱いが主役。</small>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="order"> 全順序集合
+        <small>二項述語 &lt;。非反射・推移・三分律。公理を何度も使い回す練習に最適。</small>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="nat"> 自然数（加法）＋帰納法スキーマ
+        <small>0, S, +。帰納法は無限個の公理（スキーマ）で、帰納法の変数は自由に選べる。補題を積み上げて、最後に加法の可換性へ。</small>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="peano"> ペアノ算術＋帰納法スキーマ
+        <small>0, S, +, *。標準モデルで真であるΣ1閉論理式はすべて証明できる。</small>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="ring"> 可換環
+        <small>0, 1, neg, 中置演算子 + と *（* が優先）。分配律で2つの演算が絡む。補題の積み上げが重要。</small>
+      </label>
     </div>
-  </div>
-  <div id="layout">
-    <div id="palette" class="card">
-      <h2>ルールブロック</h2>
-      <div id="blocks"></div>
-      <h2 class="sub">公理・補題</h2>
-      <div class="note">選んでからゴールをクリックすると、左辺に追加されます。証明した定理は補題として自動で追加されます。</div>
-      <div id="lib"></div>
+    <div class="card">
+      <h2>制限時間</h2>
+      <select id="timeSel">
+        <option value="300" selected>5分</option>
+        <option value="900">15分</option>
+        <option value="0">無制限（練習）</option>
+      </select>
+      <small style="color:var(--muted)">（モードを切り替えると推奨の時間に変わります）</small>
     </div>
-    <div id="workspace" class="card">
-      <div id="tree"></div>
+    <div class="card">
+      <h2>遊び方</h2>
+      <details open>
+        <summary>操作方法</summary>
+        <ol>
+          <li>画面上部の定理を、ゴール側から証明します。点線のゴールが未証明の「穴」です。定理は閉論理式で、ゴールの左辺は空（局所的な仮定だけ）から始まります。</li>
+          <li><b>理論の公理・スキーマ・証明済みの補題</b>は、左側の「公理・補題」ライブラリにまとまっています。使いたいものをクリックして選び、ゴールをクリックすると、その式を左辺に追加できます。</li>
+          <li>追加するとき、先頭の <code>∀</code> に代入する項を指定できます。空欄ならその変数は <code>∀</code> のまま残ります。命題論理の補題では、命題変数に任意の式を代入できます。</li>
+          <li>項は中置演算子で書けます。例: <code>x * y + z</code>（<code>*</code> が <code>+</code>
+            より強く結合）、<code>(x + y) * z</code>、<code>neg(x) + 0</code></li>
+          <li>帰納法スキーマは、論理式 <code>P</code> と<b>帰納法の変数</b>（空欄なら <code>x</code>）を入力してインスタンスを作ります。例: <code>P</code> =
+            <code>0 + y = y</code>、変数 = <code>y</code>。<code>P</code> には他の自由変数（パラメータ）を含めても構いません。
+          </li>
+          <li>定理を1つ証明するたびに、それが<b>補題としてライブラリに追加</b>されます。難しい定理は、先に補題を作ってから挑みましょう。</li>
+          <li>左辺が散らかったら、<code>弱化</code> ブロックで不要な式を捨てられます。</li>
+          <li>ルールブロックをクリックして選び、適用したい式（チップ）をクリックします。ドラッグ＆ドロップも使えます。</li>
+          <li><code>Id</code>、<code>⊥L</code>、<code>Refl</code> はゴール全体に適用します。適用先が1つだけなら、ゴールをクリックするだけで済みます。</li>
+          <li><code>∀L</code> と <code>∃R</code> は項の入力が必要です。<code>∀R</code> と <code>∃L</code> は新しい変数を自動で選びます。</li>
+          <li>書き換え <code>=→</code> / <code>=←</code> は2回クリックします。先に左辺の等式 <code>s = t</code> を選び、次に書き換えたい式を選びます。</li>
+          <li><code>✕</code> でその手とその下の部分を取り消せます。Escキーで選択を解除できます。</li>
+          <li>1階述語論理モードでは「自動整理」（可逆な手と閉じる手を自動で打つ、−3点）が使えます。命題論理モードでは自動整理は使えず、代わりに「ヒント」（正しい次の一手を自動適用、−5点）が使えます。</li>
+        </ol>
+      </details>
+      <details>
+        <summary>推論規則（G3系：構造規則なし＋公理導入・弱化）</summary>
+        <div class="rulelist">
+          Id: Γ, A ⊢ A, Δ<br>
+          ⊥L: Γ, ⊥ ⊢ Δ （LM以外）<br>
+          ∧R: Γ ⊢ A, Δ と Γ ⊢ B, Δ から Γ ⊢ A∧B, Δ<br>
+          ∧L: Γ, A, B ⊢ Δ から Γ, A∧B ⊢ Δ<br>
+          ∨R (LK): Γ ⊢ A, B, Δ から Γ ⊢ A∨B, Δ<br>
+          ∨R₁/∨R₂ (LJ, LM): Γ ⊢ A（または B）から Γ ⊢ A∨B<br>
+          ∨L: Γ, A ⊢ Δ と Γ, B ⊢ Δ から Γ, A∨B ⊢ Δ<br>
+          →R: Γ, A ⊢ B, Δ から Γ ⊢ A→B, Δ<br>
+          →L (LK): Γ ⊢ A, Δ と Γ, B ⊢ Δ から Γ, A→B ⊢ Δ<br>
+          →L (LJ, LM): Γ, A→B ⊢ A と Γ, B ⊢ C から Γ, A→B ⊢ C<br>
+          弱化: Γ ⊢ Δ から Γ, A ⊢ Δ（左辺の式を捨てる）<br>
+          公理の導入: Γ, A ⊢ Δ から Γ ⊢ Δ （A は公理・補題・スキーマのインスタンス）<br>
+          <br>
+          【公理・補題のインスタンス】<br>
+          ・先頭の ∀x₁…∀xₙ B に対し、項 t₁…tₙ を代入した B[t/x] を導入できる（残した ∀ はそのまま）<br>
+          ・命題論理の補題は、命題変数に任意の式を代入できる<br>
+          ・帰納法スキーマ: P(0) ∧ ∀v (P(v) → P(S(v))) → ∀v P(v)（P は任意の論理式、v は任意の変数）<br>
+          <br>
+          【1階述語論理のみ】<br>
+          Refl（等号の論理公理）: Γ ⊢ t = t, Δ<br>
+          ∀R（汎化）: Γ ⊢ A[y/x], Δ から Γ ⊢ ∀x A, Δ （y は結論に自由に現れない）<br>
+          ∃L: Γ, A[y/x] ⊢ Δ から Γ, ∃x A ⊢ Δ （y は結論に自由に現れない）<br>
+          ∀L: Γ, ∀x A, A[t/x] ⊢ Δ から Γ, ∀x A ⊢ Δ （t は任意の項）<br>
+          ∃R: Γ ⊢ A[t/x], ∃x A, Δ から Γ ⊢ ∃x A, Δ （t は任意の項）<br>
+          =→ / =←（等号の置換公理）: 左辺に s = t があるとき、同じ側の式 A 内の s（または t）の出現をすべて t（または s）に置き換える。等式自身は対象外。束縛変数による捕獲は禁止<br>
+          <br>
+          ※ 1階述語論理では領域は空でないので、項として使える変数名は自由です。<br>
+          ※ 表示では ∀・∃・¬ は強く結合します。∀x (A ∧ B) のように、二項結合子の式は括弧で囲みます。<br>
+          ※ ¬A は A → ⊥ の略記です。<br>
+          ※ 中置演算子は理論ごとに複数定義でき、優先順位と結合性（既定は左結合）を持ちます。表示では必要な括弧だけが付きます。
+        </div>
+      </details>
     </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
-<div id="modal" class="overlay">
-  <div class="box">
-    <h2 id="mdTitle">項を代入</h2>
-    <div id="mdFormula"></div>
-    <div>候補から選ぶか、下の欄に項を入力してください。</div>
-    <div id="mdSug"></div>
-    <div>
-      <input id="mdInput" placeholder="例: x   e   inv(x)*y   x*y+z" autocomplete="off">
-      <button class="primary" id="mdOk">決定</button>
-      <button id="mdCancel">キャンセル</button>
-    </div>
-  </div>
-</div>
-
-<div id="axmodal" class="overlay">
-  <div class="box">
-    <h2 id="amTitle">公理を追加</h2>
-    <div id="amFormula"></div>
-    <div class="note">各欄に代入する項（または式）を入力します。空欄なら、その変数はそのまま残ります。</div>
-    <div id="amFields"></div>
-    <div id="amSug"></div>
-    <div>追加される式:</div>
-    <div id="amPreview"></div>
-    <div>
-      <button class="primary" id="amOk">左辺に追加</button>
-      <button id="amCancel">キャンセル</button>
-    </div>
-  </div>
-</div>
-
-<div id="overlay" class="overlay">
-  <div class="box">
-    <h2 id="ovTitle">結果</h2>
-    <div id="ovBody"></div>
-
-    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
-      <button
-        class="primary"
-        id="btnRegisterScore"
-        type="submit"
-        form="scoreEntryForm"
-      >
-        スコアを登録する
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button class="primary" id="btnStart" type="button">
+        ゲーム開始
       </button>
 
-      <button id="btnAgain" type="button">
-        もう一度
-      </button>
-    </div>
-
-    <div style="margin-top: 12px;">
-      <button id="btnRankingResult" type="button">
+      <button id="btnRankingStart" type="button">
         ランキングを見る
       </button>
     </div>
   </div>
-</div>
 
-
-<div
-  id="rankingOverlay"
-  class="overlay"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="rankingTitle"
-  style="z-index: 40;"
->
-  <div class="box">
-    <div
-      style="display: flex; align-items: center; justify-content: space-between; gap: 12px;"
-    >
-      <h2 id="rankingTitle">ランキング</h2>
-
-      <button id="btnRankingClose" type="button">
-        閉じる
-      </button>
+  <div id="game">
+    <div class="card">
+      <div id="theorem"></div>
+      <div style="text-align:center">
+        <button id="btnHint">ヒント (-5点)</button>
+        <button id="btnAuto">自動整理 (-3点)</button>
+        <button id="btnReset">この問題をやり直す</button>
+        <button id="btnSkip">スキップ</button>
+        <button id="btnQuit">終了</button>
+      </div>
     </div>
-
-    <div
-      style="display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;"
-    >
-      <label>
-        モード
-        <select id="rankingMode"></select>
-      </label>
-
-      <label>
-        制限時間
-        <select id="rankingLimit"></select>
-      </label>
-
-      <button id="btnRankingReload" type="button">
-        更新
-      </button>
-    </div>
-
-    <p id="rankingCondition" class="note"></p>
-
-    <p class="note">
-      同じモード・制限時間の記録を比較します。
-      上位10件のプレイ記録を表示し、同じ名前の記録も別々に扱います。
-      同点は同順位です。
-    </p>
-    <div
-      id="rankingLoading"
-      class="ranking-loading"
-      role="status"
-      hidden
-    >
-      <div class="ranking-spinner" aria-hidden="true"></div>
-
-      <p class="ranking-loading-title">
-        ランキングを読み込み中…
-      </p>
-
-      <p class="ranking-loading-note">
-        スコアを取得しています。<br>
-        そのまましばらくお待ちください。
-      </p>
-    </div>
-    <p
-      id="rankingStatus"
-      class="note"
-      role="status"
-      aria-live="polite"
-    ></p>
-
-    <div style="overflow-x: auto;">
-      <table
-        id="rankingTable"
-        hidden
-        style="width: 100%; border-collapse: collapse;"
-      >
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              style="padding: 8px; text-align: left; border-bottom: 1px solid #556;"
-            >
-              順位
-            </th>
-            <th
-              scope="col"
-              style="padding: 8px; text-align: left; border-bottom: 1px solid #556;"
-            >
-              ニックネーム
-            </th>
-            <th
-              scope="col"
-              style="padding: 8px; text-align: right; border-bottom: 1px solid #556;"
-            >
-              スコア
-            </th>
-          </tr>
-        </thead>
-
-        <tbody id="rankingRows"></tbody>
-      </table>
+    <div id="layout">
+      <div id="palette" class="card">
+        <h2>ルールブロック</h2>
+        <div id="blocks"></div>
+        <h2 class="sub">公理・補題</h2>
+        <div class="note">選んでからゴールをクリックすると、左辺に追加されます。証明した定理は補題として自動で追加されます。</div>
+        <div id="lib"></div>
+      </div>
+      <div id="workspace" class="card">
+        <div id="tree"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-// ===================== 項と論理式 =====================
-// シグネチャ sig の形:
-//   consts : 定数名の配列（'0' のような数字も可）
-//   funcs  : { 関数名: 引数の個数 }（前置記法 f(x, y)）
-//   ops    : [{ sym: '+', prec: 1, assoc: 'left' | 'right' }]  中置の二項演算子（sym は記号1文字）
-//   preds  : { 述語名: 引数の個数 }
-//   lt     : 二項述語 < を使うか
-//   props  : 命題変数（小文字の識別子）を使うか
-const V = n => ({ k: 'var', n });
-const Fn = (n, args = []) => ({ k: 'fn', n, args });
-const Atom = (p, args) => ({ t: 'atom', p, args });
-const BOT = { t: 'bot' };
-const Bin = (t, a, b) => ({ t, a, b });
-const Q = (t, v, a) => ({ t, v, a });
-const KEYWORDS = new Set(['all', 'ex', 'F']);
-const RESERVED_SYMS = '()&|~=<.,-';
+  <div id="toast"></div>
 
-function validateSig(sig) {
-  const seen = new Set();
-  (sig.ops || []).forEach(o => {
-    if (typeof o.sym !== 'string' || o.sym.length !== 1) throw new Error('演算子記号は1文字にしてください: ' + o.sym);
-    if (RESERVED_SYMS.includes(o.sym) || /[A-Za-z0-9_'\s]/.test(o.sym)) throw new Error('使えない演算子記号です: ' + o.sym);
-    if (seen.has(o.sym)) throw new Error('演算子記号が重複しています: ' + o.sym);
-    seen.add(o.sym);
-  });
-}
+  <div id="modal" class="overlay">
+    <div class="box">
+      <h2 id="mdTitle">項を代入</h2>
+      <div id="mdFormula"></div>
+      <div>候補から選ぶか、下の欄に項を入力してください。</div>
+      <div id="mdSug"></div>
+      <div>
+        <input id="mdInput" placeholder="例: x   e   inv(x)*y   x*y+z" autocomplete="off">
+        <button class="primary" id="mdOk">決定</button>
+        <button id="mdCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
 
-function tokenize(s, sig) {
-  const opChars = (sig && sig.ops) ? sig.ops.map(o => o.sym).join('') : '';
-  const symbols = RESERVED_SYMS.replace('-', '') + opChars;
-  const toks = [];
-  let i = 0;
-  while (i < s.length) {
-    const c = s[i];
-    if (/\s/.test(c)) { i++; continue; }
-    if (s.startsWith('->', i)) { toks.push('->'); i += 2; continue; }
-    if (symbols.includes(c)) { toks.push(c); i++; continue; }
-    const num = /^[0-9]+/.exec(s.slice(i));
-    if (num) { toks.push(num[0]); i += num[0].length; continue; }
-    const m = /^[A-Za-z_][A-Za-z0-9_']*/.exec(s.slice(i));
-    if (m) { toks.push(m[0]); i += m[0].length; continue; }
-    throw new Error('不正な文字: ' + c);
-  }
-  return toks;
-}
+  <div id="axmodal" class="overlay">
+    <div class="box">
+      <h2 id="amTitle">公理を追加</h2>
+      <div id="amFormula"></div>
+      <div class="note">各欄に代入する項（または式）を入力します。空欄なら、その変数はそのまま残ります（帰納法の変数は空欄で x）。</div>
+      <div id="amFields"></div>
+      <div id="amSug"></div>
+      <div>追加される式:</div>
+      <div id="amPreview"></div>
+      <div>
+        <button class="primary" id="amOk">左辺に追加</button>
+        <button id="amCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
 
-function makeParser(toks, sig) {
-  let pos = 0;
-  const peek = () => toks[pos];
-  const next = () => toks[pos++];
-  const expect = t => { if (next() !== t) throw new Error("'" + t + "' が必要です"); };
-  const isIdent = t => t !== undefined && /^[A-Za-z_]/.test(t);
-  const hasFn = t => Object.prototype.hasOwnProperty.call(sig.funcs, t);
-  const opOf = tok => (sig.ops || []).find(o => o.sym === tok);
+  <div id="overlay" class="overlay">
+    <div class="box">
+      <h2 id="ovTitle">結果</h2>
+      <div id="ovBody"></div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
+        <button class="primary" id="btnRegisterScore" type="submit" form="scoreEntryForm">
+          スコアを登録する
+        </button>
 
-  function pTermAtom() {
-    const t = next();
-    if (t === undefined) throw new Error('項が必要です');
-    if (t === '(') { const r = pTerm(); expect(')'); return r; }
-    if (/^[0-9]+$/.test(t)) {
-      if (sig.consts.includes(t)) return Fn(t, []);
-      throw new Error('使えない数字です: ' + t);
+        <button id="btnAgain" type="button">
+          ホームに戻る
+        </button>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <button id="btnRankingResult" type="button">
+          ランキングを見る
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rankingOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="rankingTitle"
+    style="z-index: 40;">
+    <div class="box">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        <h2 id="rankingTitle">ランキング</h2>
+
+        <button id="btnRankingClose" type="button">
+          閉じる
+        </button>
+      </div>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;">
+        <label>
+          モード
+          <select id="rankingMode"></select>
+        </label>
+
+        <label>
+          制限時間
+          <select id="rankingLimit"></select>
+        </label>
+
+        <button id="btnRankingReload" type="button">
+          更新
+        </button>
+      </div>
+
+      <p id="rankingCondition" class="note"></p>
+
+      <p class="note">
+        同じモード・制限時間の記録を比較します。
+        上位10件のプレイ記録を表示し、同じ名前の記録も別々に扱います。
+        同点は同順位です。
+      </p>
+      <div id="rankingLoading" class="ranking-loading" role="status" hidden>
+        <div class="ranking-spinner" aria-hidden="true"></div>
+
+        <p class="ranking-loading-title">
+          ランキングを読み込み中…
+        </p>
+
+        <p class="ranking-loading-note">
+          スコアを取得しています。<br>
+          そのまましばらくお待ちください。
+        </p>
+      </div>
+      <p id="rankingStatus" class="note" role="status" aria-live="polite"></p>
+
+      <div style="overflow-x: auto;">
+        <table id="rankingTable" hidden style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th scope="col" style="padding: 8px; text-align: left; border-bottom: 1px solid #556;">
+                順位
+              </th>
+              <th scope="col" style="padding: 8px; text-align: left; border-bottom: 1px solid #556;">
+                ニックネーム
+              </th>
+              <th scope="col" style="padding: 8px; text-align: right; border-bottom: 1px solid #556;">
+                スコア
+              </th>
+            </tr>
+          </thead>
+
+          <tbody id="rankingRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===================== 項と論理式 =====================
+    // シグネチャ sig の形:
+    //   consts : 定数名の配列（'0' のような数字も可）
+    //   funcs  : { 関数名: 引数の個数 }（前置記法 f(x, y)）
+    //   ops    : [{ sym: '+', prec: 1, assoc: 'left' | 'right' }]  中置の二項演算子（sym は記号1文字）
+    //   preds  : { 述語名: 引数の個数 }
+    //   lt     : 二項述語 < を使うか
+    //   props  : 命題変数（小文字の識別子）を使うか
+    const V = n => ({ k: 'var', n });
+    const Fn = (n, args = []) => ({ k: 'fn', n, args });
+    const Atom = (p, args) => ({ t: 'atom', p, args });
+    const BOT = { t: 'bot' };
+    const Bin = (t, a, b) => ({ t, a, b });
+    const Q = (t, v, a) => ({ t, v, a });
+    const KEYWORDS = new Set(['all', 'ex', 'F']);
+    const RESERVED_SYMS = '()&|~=<.,-';
+
+    function validateSig(sig) {
+      const seen = new Set();
+      (sig.ops || []).forEach(o => {
+        if (typeof o.sym !== 'string' || o.sym.length !== 1) throw new Error('演算子記号は1文字にしてください: ' + o.sym);
+        if (RESERVED_SYMS.includes(o.sym) || /[A-Za-z0-9_'\s]/.test(o.sym)) throw new Error('使えない演算子記号です: ' + o.sym);
+        if (seen.has(o.sym)) throw new Error('演算子記号が重複しています: ' + o.sym);
+        seen.add(o.sym);
+      });
     }
-    if (!isIdent(t)) throw new Error('項が不正です: ' + t);
-    if ((/^[A-Z]/.test(t) && !hasFn(t)) || KEYWORDS.has(t)) throw new Error('項として使えない名前です: ' + t);
-    if (hasFn(t)) {
-      expect('(');
-      const args = [pTerm()];
-      while (peek() === ',') { next(); args.push(pTerm()); }
-      expect(')');
-      if (args.length !== sig.funcs[t]) throw new Error(t + ' の引数の数が違います');
-      return Fn(t, args);
+
+    function tokenize(s, sig) {
+      const opChars = (sig && sig.ops) ? sig.ops.map(o => o.sym).join('') : '';
+      const symbols = RESERVED_SYMS.replace('-', '') + opChars;
+      const toks = [];
+      let i = 0;
+      while (i < s.length) {
+        const c = s[i];
+        if (/\s/.test(c)) { i++; continue; }
+        if (s.startsWith('->', i)) { toks.push('->'); i += 2; continue; }
+        if (symbols.includes(c)) { toks.push(c); i++; continue; }
+        const num = /^[0-9]+/.exec(s.slice(i));
+        if (num) { toks.push(num[0]); i += num[0].length; continue; }
+        const m = /^[A-Za-z_][A-Za-z0-9_']*/.exec(s.slice(i));
+        if (m) { toks.push(m[0]); i += m[0].length; continue; }
+        throw new Error('不正な文字: ' + c);
+      }
+      return toks;
     }
-    if (sig.consts.includes(t)) return Fn(t, []);
-    return V(t);
-  }
-  // 優先順位クライミング
-  function pTerm(minPrec = 0) {
-    let l = pTermAtom();
-    for (;;) {
-      const op = opOf(peek());
-      if (!op || op.prec < minPrec) break;
-      next();
-      const r = pTerm(op.assoc === 'right' ? op.prec : op.prec + 1);
-      l = Fn(op.sym, [l, r]);
-    }
-    return l;
-  }
-  function pAtom() {
-    const t = peek();
-    if (t === 'F') { next(); return BOT; }
-    if (sig.props && isIdent(t) && /^[a-z]/.test(t) && !KEYWORDS.has(t)) {
-      next();
-      return Atom(t, []);
-    }
-    if (isIdent(t) && /^[A-Z]/.test(t) && !hasFn(t)) {
-      next();
-      if (!Object.prototype.hasOwnProperty.call(sig.preds, t)) throw new Error('未知の述語: ' + t);
-      expect('(');
-      const args = [pTerm()];
-      while (peek() === ',') { next(); args.push(pTerm()); }
-      expect(')');
-      if (args.length !== sig.preds[t]) throw new Error(t + ' の引数の数が違います');
-      return Atom(t, args);
-    }
-    const l = pTerm();
-    if (peek() === '=') { next(); return Atom('=', [l, pTerm()]); }
-    if (sig.lt && peek() === '<') { next(); return Atom('<', [l, pTerm()]); }
-    throw new Error('論理式が不正です');
-  }
-  function pUn() {
-    const t = peek();
-    if (t === '~') { next(); return Bin('imp', pUn(), BOT); }
-    if (t === 'all' || t === 'ex') {
-      next();
-      const v = next();
-      if (!isIdent(v) || KEYWORDS.has(v) || /^[A-Z]/.test(v)) throw new Error('束縛変数が不正です');
-      expect('.');
-      return Q(t, v, pImp());
-    }
-    if (t === '(') {
-      const save = pos;
-      try {
-        next();
-        const f = pImp();
-        expect(')');
-        const nx = peek();
-        if (nx === '=' || nx === '<' || opOf(nx)) throw new Error('term');
-        return f;
-      } catch (e) {
-        pos = save;
+
+    function makeParser(toks, sig) {
+      let pos = 0;
+      const peek = () => toks[pos];
+      const next = () => toks[pos++];
+      const expect = t => { if (next() !== t) throw new Error("'" + t + "' が必要です"); };
+      const isIdent = t => t !== undefined && /^[A-Za-z_]/.test(t);
+      const hasFn = t => Object.prototype.hasOwnProperty.call(sig.funcs, t);
+      const opOf = tok => (sig.ops || []).find(o => o.sym === tok);
+
+      function pTermAtom() {
+        const t = next();
+        if (t === undefined) throw new Error('項が必要です');
+        if (t === '(') { const r = pTerm(); expect(')'); return r; }
+        if (/^[0-9]+$/.test(t)) {
+          if (sig.consts.includes(t)) return Fn(t, []);
+          throw new Error('使えない数字です: ' + t);
+        }
+        if (!isIdent(t)) throw new Error('項が不正です: ' + t);
+        if ((/^[A-Z]/.test(t) && !hasFn(t)) || KEYWORDS.has(t)) throw new Error('項として使えない名前です: ' + t);
+        if (hasFn(t)) {
+          expect('(');
+          const args = [pTerm()];
+          while (peek() === ',') { next(); args.push(pTerm()); }
+          expect(')');
+          if (args.length !== sig.funcs[t]) throw new Error(t + ' の引数の数が違います');
+          return Fn(t, args);
+        }
+        if (sig.consts.includes(t)) return Fn(t, []);
+        return V(t);
+      }
+      // 優先順位クライミング
+      function pTerm(minPrec = 0) {
+        let l = pTermAtom();
+        for (; ;) {
+          const op = opOf(peek());
+          if (!op || op.prec < minPrec) break;
+          next();
+          const r = pTerm(op.assoc === 'right' ? op.prec : op.prec + 1);
+          l = Fn(op.sym, [l, r]);
+        }
+        return l;
+      }
+      function pAtom() {
+        const t = peek();
+        if (t === 'F') { next(); return BOT; }
+        if (sig.props && isIdent(t) && /^[a-z]/.test(t) && !KEYWORDS.has(t)) {
+          next();
+          return Atom(t, []);
+        }
+        if (isIdent(t) && /^[A-Z]/.test(t) && !hasFn(t)) {
+          next();
+          if (!Object.prototype.hasOwnProperty.call(sig.preds, t)) throw new Error('未知の述語: ' + t);
+          expect('(');
+          const args = [pTerm()];
+          while (peek() === ',') { next(); args.push(pTerm()); }
+          expect(')');
+          if (args.length !== sig.preds[t]) throw new Error(t + ' の引数の数が違います');
+          return Atom(t, args);
+        }
+        const l = pTerm();
+        if (peek() === '=') { next(); return Atom('=', [l, pTerm()]); }
+        if (sig.lt && peek() === '<') { next(); return Atom('<', [l, pTerm()]); }
+        throw new Error('論理式が不正です');
+      }
+      function pUn() {
+        const t = peek();
+        if (t === '~') { next(); return Bin('imp', pUn(), BOT); }
+        if (t === 'all' || t === 'ex') {
+          next();
+          const v = next();
+          if (!isIdent(v) || KEYWORDS.has(v) || /^[A-Z]/.test(v)) throw new Error('束縛変数が不正です');
+          expect('.');
+          return Q(t, v, pImp());
+        }
+        if (t === '(') {
+          const save = pos;
+          try {
+            next();
+            const f = pImp();
+            expect(')');
+            const nx = peek();
+            if (nx === '=' || nx === '<' || opOf(nx)) throw new Error('term');
+            return f;
+          } catch (e) {
+            pos = save;
+            return pAtom();
+          }
+        }
         return pAtom();
       }
+      function pAnd() {
+        let l = pUn();
+        while (peek() === '&') { next(); l = Bin('and', l, pUn()); }
+        return l;
+      }
+      function pOr() {
+        let l = pAnd();
+        while (peek() === '|') { next(); l = Bin('or', l, pAnd()); }
+        return l;
+      }
+      function pImp() {
+        const l = pOr();
+        if (peek() === '->') { next(); return Bin('imp', l, pImp()); }
+        return l;
+      }
+      return {
+        formula() {
+          const f = pImp();
+          if (pos !== toks.length) throw new Error('余分なトークン: ' + toks[pos]);
+          return f;
+        },
+        term() {
+          const t = pTerm();
+          if (pos !== toks.length) throw new Error('余分なトークン: ' + toks[pos]);
+          return t;
+        }
+      };
     }
-    return pAtom();
-  }
-  function pAnd() {
-    let l = pUn();
-    while (peek() === '&') { next(); l = Bin('and', l, pUn()); }
-    return l;
-  }
-  function pOr() {
-    let l = pAnd();
-    while (peek() === '|') { next(); l = Bin('or', l, pAnd()); }
-    return l;
-  }
-  function pImp() {
-    const l = pOr();
-    if (peek() === '->') { next(); return Bin('imp', l, pImp()); }
-    return l;
-  }
-  return {
-    formula() {
-      const f = pImp();
-      if (pos !== toks.length) throw new Error('余分なトークン: ' + toks[pos]);
-      return f;
-    },
-    term() {
-      const t = pTerm();
-      if (pos !== toks.length) throw new Error('余分なトークン: ' + toks[pos]);
+    const parseFormula = (s, sig) => makeParser(tokenize(s, sig), sig).formula();
+    const parseTermStr = (s, sig) => makeParser(tokenize(s, sig), sig).term();
+
+    const isNeg = f => f.t === 'imp' && f.b.t === 'bot';
+    const opInfo = n => (SIG && SIG.ops) ? SIG.ops.find(o => o.sym === n) : undefined;
+
+    // ctx: 親の演算子が要求する最小の優先順位。自身の優先順位がそれより低いときだけ括弧を付ける
+    function fmtT(t, ctx = 0) {
+      if (t.k === 'var') return t.n;
+      const op = opInfo(t.n);
+      if (op && t.args.length === 2) {
+        const right = op.assoc === 'right';
+        const s = fmtT(t.args[0], right ? op.prec + 1 : op.prec) + ' ' + op.sym + ' ' +
+          fmtT(t.args[1], right ? op.prec : op.prec + 1);
+        return op.prec < ctx ? '(' + s + ')' : s;
+      }
+      if (t.args.length === 0) return t.n;
+      return t.n + '(' + t.args.map(a => fmtT(a, 0)).join(', ') + ')';
+    }
+
+    function fmtF(f, p = 0) {
+      let s, lv;
+      switch (f.t) {
+        case 'atom':
+          if (f.args.length === 0) {
+            s = f.p; lv = 6;
+          } else if (f.p === '=' || f.p === '<') {
+            s = fmtT(f.args[0]) + ' ' + f.p + ' ' + fmtT(f.args[1]);
+            lv = 4.5;
+          } else {
+            s = f.p + '(' + f.args.map(a => fmtT(a)).join(', ') + ')';
+            lv = 6;
+          }
+          break;
+        case 'bot': return '⊥';
+        case 'imp':
+          if (isNeg(f)) { s = '¬' + fmtF(f.a, 4.6); lv = 5; }
+          else { s = fmtF(f.a, 2) + ' → ' + fmtF(f.b, 1); lv = 1; }
+          break;
+        case 'or': s = fmtF(f.a, 2) + ' ∨ ' + fmtF(f.b, 3); lv = 2; break;
+        case 'and': s = fmtF(f.a, 3) + ' ∧ ' + fmtF(f.b, 4); lv = 3; break;
+        case 'all': s = '∀' + f.v + ' ' + fmtF(f.a, 4.6); lv = 5; break;
+        case 'ex': s = '∃' + f.v + ' ' + fmtF(f.a, 4.6); lv = 5; break;
+      }
+      return lv < p ? '(' + s + ')' : s;
+    }
+
+    function sizeF(f) {
+      switch (f.t) {
+        case 'atom': case 'bot': return 0;
+        case 'imp':
+          return isNeg(f) ? 1 + sizeF(f.a) : 1 + sizeF(f.a) + sizeF(f.b);
+        case 'and': case 'or': return 1 + sizeF(f.a) + sizeF(f.b);
+        default: return 1 + sizeF(f.a);
+      }
+    }
+
+    // α同値を判定するためのキー（束縛変数は de Bruijn 風）
+    function keyT(t, b = []) {
+      if (t.k === 'var') {
+        const i = b.lastIndexOf(t.n);
+        return i >= 0 ? '#' + (b.length - i) : t.n;
+      }
+      return t.n + '(' + t.args.map(a => keyT(a, b)).join(',') + ')';
+    }
+    function keyF(f, b = []) {
+      switch (f.t) {
+        case 'atom': return f.p + '(' + f.args.map(a => keyT(a, b)).join(',') + ')';
+        case 'bot': return '⊥';
+        case 'and': case 'or': case 'imp':
+          return '(' + keyF(f.a, b) + f.t + keyF(f.b, b) + ')';
+        default: return f.t + '.' + keyF(f.a, [...b, f.v]);
+      }
+    }
+
+    function fvT(t, out) {
+      if (t.k === 'var') out.add(t.n);
+      else t.args.forEach(a => fvT(a, out));
+      return out;
+    }
+    function fvF(f, out = new Set(), bound = new Set()) {
+      switch (f.t) {
+        case 'atom':
+          f.args.forEach(a => { for (const v of fvT(a, new Set())) if (!bound.has(v)) out.add(v); });
+          break;
+        case 'bot': break;
+        case 'and': case 'or': case 'imp':
+          fvF(f.a, out, bound); fvF(f.b, out, bound); break;
+        default: {
+          const nb = new Set(bound); nb.add(f.v);
+          fvF(f.a, out, nb);
+        }
+      }
+      return out;
+    }
+    function fvSeq(seq) {
+      const out = new Set();
+      seq.L.forEach(f => fvF(f, out));
+      seq.R.forEach(f => fvF(f, out));
+      return out;
+    }
+
+    // 捕獲回避つき代入 A[r/x]
+    function substT(t, x, r) {
+      if (t.k === 'var') return t.n === x ? r : t;
+      return Fn(t.n, t.args.map(a => substT(a, x, r)));
+    }
+    function substF(f, x, r) {
+      switch (f.t) {
+        case 'atom': return Atom(f.p, f.args.map(a => substT(a, x, r)));
+        case 'bot': return f;
+        case 'and': case 'or': case 'imp':
+          return Bin(f.t, substF(f.a, x, r), substF(f.b, x, r));
+        default: {
+          if (f.v === x) return f;
+          const fr = fvT(r, new Set());
+          if (fr.has(f.v)) {
+            const avoid = new Set([...fr, ...fvF(f.a), x, f.v]);
+            let nv = f.v, i = 1;
+            while (avoid.has(nv)) nv = f.v + (i++);
+            const body = substF(f.a, f.v, V(nv));
+            return Q(f.t, nv, substF(body, x, r));
+          }
+          return Q(f.t, f.v, substF(f.a, x, r));
+        }
+      }
+    }
+    const instantiate = (q, t) => substF(q.a, q.v, t);
+
+    // 項 s の出現を r に書き換える（束縛による捕獲が起きる箇所は書き換えない）
+    function rwTerm(t, s, r, bound, blocked) {
+      const ok = ![...bound].some(v => blocked.has(v));
+      if (ok && keyT(t) === keyT(s)) return r;
+      if (t.k === 'fn') return Fn(t.n, t.args.map(a => rwTerm(a, s, r, bound, blocked)));
       return t;
     }
-  };
-}
-const parseFormula = (s, sig) => makeParser(tokenize(s, sig), sig).formula();
-const parseTermStr = (s, sig) => makeParser(tokenize(s, sig), sig).term();
+    function rwFormula(f, s, r, blocked, bound) {
+      switch (f.t) {
+        case 'atom': return Atom(f.p, f.args.map(a => rwTerm(a, s, r, bound, blocked)));
+        case 'bot': return f;
+        case 'and': case 'or': case 'imp':
+          return Bin(f.t, rwFormula(f.a, s, r, blocked, bound), rwFormula(f.b, s, r, blocked, bound));
+        default: {
+          const nb = new Set(bound); nb.add(f.v);
+          return Q(f.t, f.v, rwFormula(f.a, s, r, blocked, nb));
+        }
+      }
+    }
 
-const isNeg = f => f.t === 'imp' && f.b.t === 'bot';
-const opInfo = n => (SIG && SIG.ops) ? SIG.ops.find(o => o.sym === n) : undefined;
+    // 命題変数の置換・収集（命題論理の補題用）
+    function atomsOf(f, out = []) {
+      switch (f.t) {
+        case 'atom': if (f.args.length === 0 && !out.includes(f.p)) out.push(f.p); break;
+        case 'bot': break;
+        case 'and': case 'or': case 'imp': atomsOf(f.a, out); atomsOf(f.b, out); break;
+        default: atomsOf(f.a, out);
+      }
+      return out;
+    }
+    function substProp(f, map) {
+      switch (f.t) {
+        case 'atom': return (f.args.length === 0 && map[f.p]) ? map[f.p] : f;
+        case 'bot': return f;
+        case 'and': case 'or': case 'imp': return Bin(f.t, substProp(f.a, map), substProp(f.b, map));
+        default: return Q(f.t, f.v, substProp(f.a, map));
+      }
+    }
 
-// ctx: 親の演算子が要求する最小の優先順位。自身の優先順位がそれより低いときだけ括弧を付ける
-function fmtT(t, ctx = 0) {
-  if (t.k === 'var') return t.n;
-  const op = opInfo(t.n);
-  if (op && t.args.length === 2) {
-    const right = op.assoc === 'right';
-    const s = fmtT(t.args[0], right ? op.prec + 1 : op.prec) + ' ' + op.sym + ' ' +
-              fmtT(t.args[1], right ? op.prec : op.prec + 1);
-    return op.prec < ctx ? '(' + s + ')' : s;
-  }
-  if (t.args.length === 0) return t.n;
-  return t.n + '(' + t.args.map(a => fmtT(a, 0)).join(', ') + ')';
-}
+    // 先頭の ∀ を列挙し、項を代入した式を作る（null は ∀ を残す）
+    function leadingAll(f) {
+      const vs = [];
+      let g = f;
+      while (g.t === 'all') { vs.push(g.v); g = g.a; }
+      return vs;
+    }
+    function buildInst(f, vals) {
+      const kept = new Set();
+      const go = (g, i) => {
+        if (i >= vals.length) return g;
+        if (vals[i]) {
+          for (const v of fvT(vals[i], new Set())) {
+            if (kept.has(v)) throw new Error('変数 ' + v + ' は残した ∀' + v + ' と衝突します');
+          }
+          return go(instantiate(g, vals[i]), i + 1);
+        }
+        kept.add(g.v);
+        return Q('all', g.v, go(g.a, i + 1));
+      };
+      return go(f, 0);
+    }
 
-function fmtF(f, p = 0) {
-  let s, lv;
-  switch (f.t) {
-    case 'atom':
-      if (f.args.length === 0) {
-        s = f.p; lv = 6;
-      } else if (f.p === '=' || f.p === '<') {
-        s = fmtT(f.args[0]) + ' ' + f.p + ' ' + fmtT(f.args[1]);
-        lv = 4.5;
+    // ===================== モード（論理・理論）の定義 =====================
+    const PROP_SIG = { consts: [], funcs: {}, ops: [], preds: {}, lt: false, props: true };
+
+    const PROP_THEOREM_SRC = [
+      'p -> p',
+      'p -> q -> p',
+      '(p & q) -> p',
+      '(p & q) -> (q & p)',
+      'p -> (p | q)',
+      '(p | q) -> (q | p)',
+      'p -> ~~p',
+      '~(p & ~p)',
+      '(p -> q) -> (~q -> ~p)',
+      '(p -> q) -> (q -> r) -> (p -> r)',
+      '(p -> q -> r) -> (p & q -> r)',
+      '(p & q -> r) -> (p -> q -> r)',
+      '(p -> q -> r) -> (p -> q) -> (p -> r)',
+      'p & (q | r) -> (p & q) | (p & r)',
+      '(p & q) | (p & r) -> p & (q | r)',
+      '~(p | q) -> (~p & ~q)',
+      '(~p & ~q) -> ~(p | q)',
+      '(~p | ~q) -> ~(p & q)',
+      '~~~p -> ~p',
+      '(p -> r) & (q -> r) -> (p | q -> r)',
+      '(p & ~p) -> q',
+      '(p | q) -> (~p -> q)',
+      '~~(p | ~p)',
+      '~~(~~p -> p)',
+      '(p -> q) -> ~~p -> ~~q',
+      'p | ~p',
+      '~~p -> p',
+      '((p -> q) -> p) -> p',
+      '~(p & q) -> (~p | ~q)',
+      '(p -> q) | (q -> p)',
+      '(p -> q) -> (~p | q)',
+      '~(~p & ~q) -> (p | q)',
+      '(~q -> ~p) -> (p -> q)',
+      '((p -> q) -> r) -> ((p -> r) -> r)',
+      '(p -> q) | (p -> r) -> (p -> q | r)'
+    ];
+
+    const PROP_RULES = {
+      LK: ['id', 'botL', 'andR', 'andL', 'orR', 'orL', 'impR', 'impL', 'wkL'],
+      LJ: ['id', 'botL', 'andR', 'andL', 'orR1', 'orR2', 'orL', 'impR', 'impL', 'wkL'],
+      LM: ['id', 'andR', 'andL', 'orR1', 'orR2', 'orL', 'impR', 'impL', 'wkL']
+    };
+    const FOL_RULES = ['id', 'botL', 'refl', 'andR', 'andL', 'orR', 'orL', 'impR', 'impL',
+      'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL'];
+
+    const THEORIES = {
+      LK: {
+        name: '命題論理・古典 LK', kind: 'prop', logic: 'LK', rules: PROP_RULES.LK,
+        sig: PROP_SIG, axioms: [], theorems: null
+      },
+      LJ: {
+        name: '命題論理・直観 LJ', kind: 'prop', logic: 'LJ', rules: PROP_RULES.LJ,
+        sig: PROP_SIG, axioms: [], theorems: null
+      },
+      LM: {
+        name: '命題論理・最小 LM', kind: 'prop', logic: 'LM', rules: PROP_RULES.LM,
+        sig: PROP_SIG, axioms: [], theorems: null
+      },
+      group: {
+        name: '1階・群', kind: 'fol', logic: 'LK', rules: FOL_RULES,
+        sig: { consts: ['e'], funcs: { inv: 1 }, ops: [{ sym: '*', prec: 1 }], preds: {}, lt: false },
+        axioms: [
+          ['左単位元', 'all x. e*x = x'],
+          ['左逆元', 'all x. inv(x)*x = e'],
+          ['結合律', 'all x. all y. all z. (x*y)*z = x*(y*z)']
+        ],
+        theorems: [
+          ['ex x. x = e', 6],
+          ['all x. e*x = x', 8],
+          ['all x. all y. x = y -> y = x', 10],
+          ['all x. (inv(x)*x = e & e*x = x)', 10],
+          ['ex x. all y. x*y = y', 12],
+          ['all x. ex y. y*x = e', 12],
+          ['all x. all y. x = y -> inv(x) = inv(y)', 12],
+          ['all x. all y. all z. (x = y -> y = z -> x = z)', 16],
+          ['all x. all y. (inv(x)*x)*y = y', 16],
+          ['all x. all y. all z. x*y = x*z -> y = z', 30]
+        ]
+      },
+      graph: {
+        name: '1階・単純グラフ', kind: 'fol', logic: 'LK', rules: FOL_RULES,
+        sig: { consts: [], funcs: {}, ops: [], preds: { E: 2 }, lt: false },
+        axioms: [
+          ['非反射性', 'all x. ~E(x,x)'],
+          ['対称性', 'all x. all y. (E(x,y) -> E(y,x))']
+        ],
+        theorems: [
+          ['all x. ~E(x,x)', 5],
+          ['all x. all y. (E(x,y) -> E(y,x))', 8],
+          ['(all x. ex y. E(x,y)) -> ex x. ex y. E(x,y)', 10],
+          ['(ex x. all y. E(x,y)) -> all y. ex x. E(x,y)', 12],
+          ['all x. all y. (E(x,y) -> ~(x = y))', 14],
+          ['all x. all y. ((E(x,y) -> E(y,x)) & (E(y,x) -> E(x,y)))', 14],
+          ['~(ex x. all y. E(x,y))', 16],
+          ['~(all x. E(x,x)) -> ex x. ~E(x,x)', 20],
+          ['(all x. ex y. E(x,y)) -> all x. ex y. ex z. (E(x,y) & E(y,z))', 24],
+          ['ex x. (E(x,x) -> all y. E(y,y))', 28]
+        ]
+      },
+      order: {
+        name: '1階・全順序集合', kind: 'fol', logic: 'LK', rules: FOL_RULES,
+        sig: { consts: [], funcs: {}, ops: [], preds: {}, lt: true },
+        axioms: [
+          ['非反射律', 'all x. ~(x < x)'],
+          ['推移律', 'all x. all y. all z. (x<y & y<z -> x<z)'],
+          ['三分律', 'all x. all y. (x<y | x = y | y<x)']
+        ],
+        theorems: [
+          ['all x. all y. (x<y | x = y | y<x)', 6],
+          ['all x. all y. (x<y -> ~(y<x))', 14],
+          ['~(ex x. all y. y<x)', 14],
+          ['all x. all y. (x<y -> ~(x = y))', 14],
+          ['all x. all y. (~(x<y) -> (x = y | y<x))', 14],
+          ['all x. all y. (~(y<x) -> (x<y | x = y))', 16],
+          ['all x. all y. (~(x<y) & ~(y<x) -> x = y)', 18],
+          ['all x. all y. all z. (x<y -> y<z -> ~(z<x))', 24],
+          ['all x. all y. all z. (x<y & y<z -> ~(z = x))', 26],
+          ['(ex x. ex y. x<y) -> ex x. ex y. (x<y & ~(y<x))', 26]
+        ]
+      },
+      nat: {
+        name: '1階・自然数（加法）', kind: 'fol', logic: 'LK', rules: FOL_RULES,
+        sig: { consts: ['0'], funcs: { S: 1 }, ops: [{ sym: '+', prec: 1 }], preds: {}, lt: false },
+        axioms: [
+          ['0は後者でない', 'all x. ~(S(x) = 0)'],
+          ['Sは単射', 'all x. all y. (S(x) = S(y) -> x = y)'],
+          ['加法の基底', 'all x. x + 0 = x'],
+          ['加法の再帰', 'all x. all y. x + S(y) = S(x + y)']
+        ],
+        schemas: [{ name: '帰納法スキーマ' }],
+        theorems: [
+          ['all x. x + 0 = x', 4],
+          ['S(0) + S(0) = S(S(0))', 14],
+          ['all x. (x = 0 | ex y. x = S(y))', 24],
+          ['all x. 0 + x = x', 26],
+          ['all x. ~(x = S(x))', 26],
+          ['all x. all y. S(x) + y = S(x + y)', 30],
+          ['all x. all y. all z. (x + y) + z = x + (y + z)', 34],
+          ['all x. all y. x + y = y + x', 50]
+        ]
+      },
+      peano: {
+        name: '1階・ペアノ算術', kind: 'fol', logic: 'LK', rules: FOL_RULES,
+        sig: { consts: ['0'], funcs: { S: 1 }, ops: [{ sym: '+', prec: 1 }, { sym: '*', prec: 2 }], preds: {}, lt: false },
+        axioms: [
+          ['0は後者でない', 'all x. ~(S(x) = 0)'],
+          ['Sは単射', 'all x. all y. (S(x) = S(y) -> x = y)'],
+          ['加法の基底', 'all x. x + 0 = x'],
+          ['加法の再帰', 'all x. all y. x + S(y) = S(x + y)'],
+          ['乗法の吸収元', 'all x. x * 0 = 0'],
+          ['乗法の再帰', 'all x. all y. x * S(y) = x * y + x'],
+        ],
+        schemas: [{ name: '帰納法スキーマ' }],
+        theorems: [
+          ['all x. x + 0 = x', 4],
+          ['S(0) + S(0) = S(S(0))', 14],
+          ['S(S(0)) * S(S(0)) = S(S(S(S(0))))', 20],
+          ['all x. (x = 0 | ex y. x = S(y))', 24],
+          ['all x. 0 + x = x', 26],
+          ['all x. all y. S(x) + y = S(x + y)', 30],
+          ['all x. all y. x + y = y + x', 50],
+          ['all x. all y. x * y = y * x', 70],
+          ['all x. all y. all z. (x + y) * z = x * z + y * z', 100],
+        ]
+      },
+      ring: {
+        name: '1階・可換環', kind: 'fol', logic: 'LK', rules: FOL_RULES,
+        // 中置演算子が2つ: + (優先順位1) と * (優先順位2)
+        sig: {
+          consts: ['0', '1'],
+          funcs: { neg: 1 },
+          ops: [{ sym: '+', prec: 1 }, { sym: '*', prec: 2 }],
+          preds: {}, lt: false
+        },
+        axioms: [
+          ['加法の結合律', 'all x. all y. all z. (x + y) + z = x + (y + z)'],
+          ['加法の可換律', 'all x. all y. x + y = y + x'],
+          ['加法の単位元', 'all x. x + 0 = x'],
+          ['加法の逆元', 'all x. x + neg(x) = 0'],
+          ['乗法の結合律', 'all x. all y. all z. (x * y) * z = x * (y * z)'],
+          ['乗法の可換律', 'all x. all y. x * y = y * x'],
+          ['乗法の単位元', 'all x. x * 1 = x'],
+          ['分配律', 'all x. all y. all z. x * (y + z) = x * y + x * z']
+        ],
+        theorems: [
+          ['all x. all y. x + y = y + x', 6],
+          ['all x. ex y. x + y = 0', 10],
+          ['all x. 0 + x = x', 14],
+          ['all x. 1 * x = x', 14],
+          ['ex x. all y. x + y = y', 18],
+          ['all x. all y. all z. (y + z) * x = y * x + z * x', 22],
+          ['neg(0) = 0', 26],
+          ['all x. all y. all z. x + y = x + z -> y = z', 40],
+          ['all x. x * 0 = 0', 46],
+          ['all x. neg(neg(x)) = x', 50]
+        ]
+      }
+    };
+
+    // グローバルな現在モード（startGame で設定）
+    let CUR = null;
+    let SIG = null;
+    let LOGIC = 'LK';
+
+    function compileTheory(T) {
+      if (T.compiled) return T;
+      validateSig(T.sig);
+      T.axiomsF = T.axioms.map(([name, s]) => ({ name, f: parseFormula(s, T.sig) }));
+      if (T.kind === 'prop') {
+        T.thms = PROP_THEOREM_SRC
+          .map(src => {
+            const f = parseFormula(src, T.sig);
+            return { src, f, pts: 10 + 2 * sizeF(f) };
+          })
+          .filter(t => !!prove(S([], [t.f])));
       } else {
-        s = f.p + '(' + f.args.map(a => fmtT(a)).join(', ') + ')';
-        lv = 6;
+        T.thms = T.theorems.map(([src, pts]) => {
+          const f = parseFormula(src, T.sig);
+          if (fvF(f).size > 0) console.error('閉論理式ではありません: ' + src);
+          return { src, f, pts };
+        });
       }
-      break;
-    case 'bot': return '⊥';
-    case 'imp':
-      if (isNeg(f)) { s = '¬' + fmtF(f.a, 4.6); lv = 5; }
-      else { s = fmtF(f.a, 2) + ' → ' + fmtF(f.b, 1); lv = 1; }
-      break;
-    case 'or': s = fmtF(f.a, 2) + ' ∨ ' + fmtF(f.b, 3); lv = 2; break;
-    case 'and': s = fmtF(f.a, 3) + ' ∧ ' + fmtF(f.b, 4); lv = 3; break;
-    case 'all': s = '∀' + f.v + ' ' + fmtF(f.a, 4.6); lv = 5; break;
-    case 'ex': s = '∃' + f.v + ' ' + fmtF(f.a, 4.6); lv = 5; break;
-  }
-  return lv < p ? '(' + s + ')' : s;
-}
-
-function sizeF(f) {
-  switch (f.t) {
-    case 'atom': case 'bot': return 0;
-    case 'imp':
-      return isNeg(f) ? 1 + sizeF(f.a) : 1 + sizeF(f.a) + sizeF(f.b);
-    case 'and': case 'or': return 1 + sizeF(f.a) + sizeF(f.b);
-    default: return 1 + sizeF(f.a);
-  }
-}
-
-// α同値を判定するためのキー（束縛変数は de Bruijn 風）
-function keyT(t, b = []) {
-  if (t.k === 'var') {
-    const i = b.lastIndexOf(t.n);
-    return i >= 0 ? '#' + (b.length - i) : t.n;
-  }
-  return t.n + '(' + t.args.map(a => keyT(a, b)).join(',') + ')';
-}
-function keyF(f, b = []) {
-  switch (f.t) {
-    case 'atom': return f.p + '(' + f.args.map(a => keyT(a, b)).join(',') + ')';
-    case 'bot': return '⊥';
-    case 'and': case 'or': case 'imp':
-      return '(' + keyF(f.a, b) + f.t + keyF(f.b, b) + ')';
-    default: return f.t + '.' + keyF(f.a, [...b, f.v]);
-  }
-}
-
-function fvT(t, out) {
-  if (t.k === 'var') out.add(t.n);
-  else t.args.forEach(a => fvT(a, out));
-  return out;
-}
-function fvF(f, out = new Set(), bound = new Set()) {
-  switch (f.t) {
-    case 'atom':
-      f.args.forEach(a => { for (const v of fvT(a, new Set())) if (!bound.has(v)) out.add(v); });
-      break;
-    case 'bot': break;
-    case 'and': case 'or': case 'imp':
-      fvF(f.a, out, bound); fvF(f.b, out, bound); break;
-    default: {
-      const nb = new Set(bound); nb.add(f.v);
-      fvF(f.a, out, nb);
+      T.compiled = true;
+      return T;
     }
-  }
-  return out;
-}
-function fvSeq(seq) {
-  const out = new Set();
-  seq.L.forEach(f => fvF(f, out));
-  seq.R.forEach(f => fvF(f, out));
-  return out;
-}
 
-// 捕獲回避つき代入 A[r/x]
-function substT(t, x, r) {
-  if (t.k === 'var') return t.n === x ? r : t;
-  return Fn(t.n, t.args.map(a => substT(a, x, r)));
-}
-function substF(f, x, r) {
-  switch (f.t) {
-    case 'atom': return Atom(f.p, f.args.map(a => substT(a, x, r)));
-    case 'bot': return f;
-    case 'and': case 'or': case 'imp':
-      return Bin(f.t, substF(f.a, x, r), substF(f.b, x, r));
-    default: {
-      if (f.v === x) return f;
-      const fr = fvT(r, new Set());
-      if (fr.has(f.v)) {
-        const avoid = new Set([...fr, ...fvF(f.a), x, f.v]);
-        let nv = f.v, i = 1;
-        while (avoid.has(nv)) nv = f.v + (i++);
-        const body = substF(f.a, f.v, V(nv));
-        return Q(f.t, nv, substF(body, x, r));
+    // ===================== 推論規則 =====================
+    const RULES = {
+      id: { label: 'Id', cls: 'c-id', side: null, desc: 'Γ, A ⊢ A, Δ' },
+      botL: { label: '⊥L', cls: 'c-bot', side: null, desc: 'Γ, ⊥ ⊢ Δ' },
+      refl: { label: 'Refl', cls: 'c-eq', side: null, desc: 'Γ ⊢ t = t, Δ' },
+      andR: { label: '∧R', cls: 'c-and', side: 'R', conn: 'and', desc: '右辺の ∧ を分解' },
+      andL: { label: '∧L', cls: 'c-and', side: 'L', conn: 'and', desc: '左辺の ∧ を分解' },
+      orR: { label: '∨R', cls: 'c-or', side: 'R', conn: 'or', desc: '右辺の ∨ を分解' },
+      orR1: { label: '∨R₁', cls: 'c-or', side: 'R', conn: 'or', desc: '左の選択肢を選ぶ' },
+      orR2: { label: '∨R₂', cls: 'c-or', side: 'R', conn: 'or', desc: '右の選択肢を選ぶ' },
+      orL: { label: '∨L', cls: 'c-or', side: 'L', conn: 'or', desc: '左辺の ∨ で場合分け' },
+      impR: { label: '→R', cls: 'c-imp', side: 'R', conn: 'imp', desc: '前件を仮定に移す（¬ も）' },
+      impL: { label: '→L', cls: 'c-imp', side: 'L', conn: 'imp', desc: '左辺の → を使う' },
+      allR: { label: '∀R', cls: 'c-all', side: 'R', conn: 'all', desc: '汎化: 新しい変数 y で ∀x A を示す' },
+      allL: { label: '∀L', cls: 'c-all', side: 'L', conn: 'all', desc: '代入: A[t/x] を得る（∀は残る）' },
+      exR: { label: '∃R', cls: 'c-ex', side: 'R', conn: 'ex', desc: '代入: 証拠の項 t を与える' },
+      exL: { label: '∃L', cls: 'c-ex', side: 'L', conn: 'ex', desc: '存在する対象に新しい変数 y を名付ける' },
+      rwF: { label: '=→', cls: 'c-eq', side: 'rw', desc: '等式 s=t で s を t に書換' },
+      rwB: { label: '=←', cls: 'c-eq', side: 'rw', desc: '等式 s=t で t を s に書換' },
+      wkL: { label: '弱化', cls: 'c-wk', side: 'L', conn: null, desc: '左辺の式を捨てる（整理用）' },
+      ax: { label: '公理', cls: 'c-ax', side: null, desc: '公理・補題を左辺に導入' }
+    };
+    const RULE_ORDER = ['id', 'botL', 'refl', 'andR', 'andL', 'orR', 'orR1', 'orR2', 'orL', 'impR', 'impL',
+      'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL'];
+
+    const rep = (arr, i, ...xs) => [...arr.slice(0, i), ...xs, ...arr.slice(i + 1)];
+    const S = (L, R) => ({ L, R });
+
+    function freshName(seq, base) {
+      const used = fvSeq(seq);
+      let n = base, i = 1;
+      while (used.has(n) || SIG.consts.includes(n) ||
+        Object.prototype.hasOwnProperty.call(SIG.funcs, n) || KEYWORDS.has(n)) {
+        n = base + (i++);
       }
-      return Q(f.t, f.v, substF(f.a, x, r));
+      return n;
     }
-  }
-}
-const instantiate = (q, t) => substF(q.a, q.v, t);
 
-// 項 s の出現を r に書き換える（束縛による捕獲が起きる箇所は書き換えない）
-function rwTerm(t, s, r, bound, blocked) {
-  const ok = ![...bound].some(v => blocked.has(v));
-  if (ok && keyT(t) === keyT(s)) return r;
-  if (t.k === 'fn') return Fn(t.n, t.args.map(a => rwTerm(a, s, r, bound, blocked)));
-  return t;
-}
-function rwFormula(f, s, r, blocked, bound) {
-  switch (f.t) {
-    case 'atom': return Atom(f.p, f.args.map(a => rwTerm(a, s, r, bound, blocked)));
-    case 'bot': return f;
-    case 'and': case 'or': case 'imp':
-      return Bin(f.t, rwFormula(f.a, s, r, blocked, bound), rwFormula(f.b, s, r, blocked, bound));
-    default: {
-      const nb = new Set(bound); nb.add(f.v);
-      return Q(f.t, f.v, rwFormula(f.a, s, r, blocked, nb));
-    }
-  }
-}
-
-// 命題変数の置換・収集（命題論理の補題用）
-function atomsOf(f, out = []) {
-  switch (f.t) {
-    case 'atom': if (f.args.length === 0 && !out.includes(f.p)) out.push(f.p); break;
-    case 'bot': break;
-    case 'and': case 'or': case 'imp': atomsOf(f.a, out); atomsOf(f.b, out); break;
-    default: atomsOf(f.a, out);
-  }
-  return out;
-}
-function substProp(f, map) {
-  switch (f.t) {
-    case 'atom': return (f.args.length === 0 && map[f.p]) ? map[f.p] : f;
-    case 'bot': return f;
-    case 'and': case 'or': case 'imp': return Bin(f.t, substProp(f.a, map), substProp(f.b, map));
-    default: return Q(f.t, f.v, substProp(f.a, map));
-  }
-}
-
-// 先頭の ∀ を列挙し、項を代入した式を作る（null は ∀ を残す）
-function leadingAll(f) {
-  const vs = [];
-  let g = f;
-  while (g.t === 'all') { vs.push(g.v); g = g.a; }
-  return vs;
-}
-function buildInst(f, vals) {
-  const kept = new Set();
-  const go = (g, i) => {
-    if (i >= vals.length) return g;
-    if (vals[i]) {
-      for (const v of fvT(vals[i], new Set())) {
-        if (kept.has(v)) throw new Error('変数 ' + v + ' は残した ∀' + v + ' と衝突します');
+    function premises(seq, name, side, idx, opts = {}) {
+      const { L, R } = seq;
+      if (name === 'ax') {
+        if (L.some(g => keyF(g) === keyF(opts.inst))) return { err: '同じ式がすでに左辺にあります' };
+        return [S([...L, opts.inst], R)];
       }
-      return go(instantiate(g, vals[i]), i + 1);
-    }
-    kept.add(g.v);
-    return Q('all', g.v, go(g.a, i + 1));
-  };
-  return go(f, 0);
-}
-
-// ===================== モード（論理・理論）の定義 =====================
-const PROP_SIG = { consts: [], funcs: {}, ops: [], preds: {}, lt: false, props: true };
-
-const PROP_THEOREM_SRC = [
-  'p -> p',
-  'p -> q -> p',
-  '(p & q) -> p',
-  '(p & q) -> (q & p)',
-  'p -> (p | q)',
-  '(p | q) -> (q | p)',
-  'p -> ~~p',
-  '~(p & ~p)',
-  '(p -> q) -> (~q -> ~p)',
-  '(p -> q) -> (q -> r) -> (p -> r)',
-  '(p -> q -> r) -> (p & q -> r)',
-  '(p & q -> r) -> (p -> q -> r)',
-  '(p -> q -> r) -> (p -> q) -> (p -> r)',
-  'p & (q | r) -> (p & q) | (p & r)',
-  '(p & q) | (p & r) -> p & (q | r)',
-  '~(p | q) -> (~p & ~q)',
-  '(~p & ~q) -> ~(p | q)',
-  '(~p | ~q) -> ~(p & q)',
-  '~~~p -> ~p',
-  '(p -> r) & (q -> r) -> (p | q -> r)',
-  '(p & ~p) -> q',
-  '(p | q) -> (~p -> q)',
-  '~~(p | ~p)',
-  '~~(~~p -> p)',
-  '(p -> q) -> ~~p -> ~~q',
-  'p | ~p',
-  '~~p -> p',
-  '((p -> q) -> p) -> p',
-  '~(p & q) -> (~p | ~q)',
-  '(p -> q) | (q -> p)',
-  '(p -> q) -> (~p | q)',
-  '~(~p & ~q) -> (p | q)',
-  '(~q -> ~p) -> (p -> q)',
-  '((p -> q) -> r) -> ((p -> r) -> r)',
-  '(p -> q) | (p -> r) -> (p -> q | r)'
-];
-
-const PROP_RULES = {
-  LK: ['id', 'botL', 'andR', 'andL', 'orR', 'orL', 'impR', 'impL', 'wkL'],
-  LJ: ['id', 'botL', 'andR', 'andL', 'orR1', 'orR2', 'orL', 'impR', 'impL', 'wkL'],
-  LM: ['id', 'andR', 'andL', 'orR1', 'orR2', 'orL', 'impR', 'impL', 'wkL']
-};
-const FOL_RULES = ['id', 'botL', 'refl', 'andR', 'andL', 'orR', 'orL', 'impR', 'impL',
-                   'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL'];
-
-const THEORIES = {
-  LK: { name: '命題論理・古典 LK', kind: 'prop', logic: 'LK', rules: PROP_RULES.LK,
-        sig: PROP_SIG, axioms: [], theorems: null },
-  LJ: { name: '命題論理・直観 LJ', kind: 'prop', logic: 'LJ', rules: PROP_RULES.LJ,
-        sig: PROP_SIG, axioms: [], theorems: null },
-  LM: { name: '命題論理・最小 LM', kind: 'prop', logic: 'LM', rules: PROP_RULES.LM,
-        sig: PROP_SIG, axioms: [], theorems: null },
-  group: {
-    name: '1階・群', kind: 'fol', logic: 'LK', rules: FOL_RULES,
-    sig: { consts: ['e'], funcs: { inv: 1 }, ops: [{ sym: '*', prec: 1 }], preds: {}, lt: false },
-    axioms: [
-      ['左単位元', 'all x. e*x = x'],
-      ['左逆元', 'all x. inv(x)*x = e'],
-      ['結合律', 'all x. all y. all z. (x*y)*z = x*(y*z)']
-    ],
-    theorems: [
-      ['ex x. x = e', 6],
-      ['all x. e*x = x', 8],
-      ['all x. all y. x = y -> y = x', 10],
-      ['all x. (inv(x)*x = e & e*x = x)', 10],
-      ['ex x. all y. x*y = y', 12],
-      ['all x. ex y. y*x = e', 12],
-      ['all x. all y. x = y -> inv(x) = inv(y)', 12],
-      ['all x. all y. all z. (x = y -> y = z -> x = z)', 16],
-      ['all x. all y. (inv(x)*x)*y = y', 16],
-      ['all x. all y. all z. x*y = x*z -> y = z', 30]
-    ]
-  },
-  graph: {
-    name: '1階・単純グラフ', kind: 'fol', logic: 'LK', rules: FOL_RULES,
-    sig: { consts: [], funcs: {}, ops: [], preds: { E: 2 }, lt: false },
-    axioms: [
-      ['非反射性', 'all x. ~E(x,x)'],
-      ['対称性', 'all x. all y. (E(x,y) -> E(y,x))']
-    ],
-    theorems: [
-      ['all x. ~E(x,x)', 5],
-      ['all x. all y. (E(x,y) -> E(y,x))', 8],
-      ['(all x. ex y. E(x,y)) -> ex x. ex y. E(x,y)', 10],
-      ['(ex x. all y. E(x,y)) -> all y. ex x. E(x,y)', 12],
-      ['all x. all y. (E(x,y) -> ~(x = y))', 14],
-      ['all x. all y. ((E(x,y) -> E(y,x)) & (E(y,x) -> E(x,y)))', 14],
-      ['~(ex x. all y. E(x,y))', 16],
-      ['~(all x. E(x,x)) -> ex x. ~E(x,x)', 20],
-      ['(all x. ex y. E(x,y)) -> all x. ex y. ex z. (E(x,y) & E(y,z))', 24],
-      ['ex x. (E(x,x) -> all y. E(y,y))', 28]
-    ]
-  },
-  order: {
-    name: '1階・全順序集合', kind: 'fol', logic: 'LK', rules: FOL_RULES,
-    sig: { consts: [], funcs: {}, ops: [], preds: {}, lt: true },
-    axioms: [
-      ['非反射律', 'all x. ~(x < x)'],
-      ['推移律', 'all x. all y. all z. (x<y & y<z -> x<z)'],
-      ['三分律', 'all x. all y. (x<y | x = y | y<x)']
-    ],
-    theorems: [
-      ['all x. all y. (x<y | x = y | y<x)', 6],
-      ['all x. all y. (x<y -> ~(y<x))', 14],
-      ['~(ex x. all y. y<x)', 14],
-      ['all x. all y. (x<y -> ~(x = y))', 14],
-      ['all x. all y. (~(x<y) -> (x = y | y<x))', 14],
-      ['all x. all y. (~(y<x) -> (x<y | x = y))', 16],
-      ['all x. all y. (~(x<y) & ~(y<x) -> x = y)', 18],
-      ['all x. all y. all z. (x<y -> y<z -> ~(z<x))', 24],
-      ['all x. all y. all z. (x<y & y<z -> ~(z = x))', 26],
-      ['(ex x. ex y. x<y) -> ex x. ex y. (x<y & ~(y<x))', 26]
-    ]
-  },
-  nat: {
-    name: '1階・自然数（加法）', kind: 'fol', logic: 'LK', rules: FOL_RULES,
-    sig: { consts: ['0'], funcs: { S: 1 }, ops: [{ sym: '+', prec: 1 }], preds: {}, lt: false },
-    axioms: [
-      ['0は後者でない', 'all x. ~(S(x) = 0)'],
-      ['Sは単射', 'all x. all y. (S(x) = S(y) -> x = y)'],
-      ['加法の基底', 'all x. x + 0 = x'],
-      ['加法の再帰', 'all x. all y. x + S(y) = S(x + y)']
-    ],
-    schemas: [{ name: '帰納法スキーマ' }],
-    theorems: [
-      ['all x. x + 0 = x', 4],
-      ['S(0) + S(0) = S(S(0))', 14],
-      ['all x. (x = 0 | ex y. x = S(y))', 24],
-      ['all x. 0 + x = x', 26],
-      ['all x. ~(x = S(x))', 26],
-      ['all x. all y. S(x) + y = S(x + y)', 30],
-      ['all x. all y. all z. (x + y) + z = x + (y + z)', 34],
-      ['all x. all y. x + y = y + x', 50]
-    ]
-  },
-  ring: {
-    name: '1階・可換環', kind: 'fol', logic: 'LK', rules: FOL_RULES,
-    // 中置演算子が2つ: + (優先順位1) と * (優先順位2)
-    sig: {
-      consts: ['0', '1'],
-      funcs: { neg: 1 },
-      ops: [{ sym: '+', prec: 1 }, { sym: '*', prec: 2 }],
-      preds: {}, lt: false
-    },
-    axioms: [
-      ['加法の結合律', 'all x. all y. all z. (x + y) + z = x + (y + z)'],
-      ['加法の可換律', 'all x. all y. x + y = y + x'],
-      ['加法の単位元', 'all x. x + 0 = x'],
-      ['加法の逆元', 'all x. x + neg(x) = 0'],
-      ['乗法の結合律', 'all x. all y. all z. (x * y) * z = x * (y * z)'],
-      ['乗法の可換律', 'all x. all y. x * y = y * x'],
-      ['乗法の単位元', 'all x. x * 1 = x'],
-      ['分配律', 'all x. all y. all z. x * (y + z) = x * y + x * z']
-    ],
-    theorems: [
-      ['all x. all y. x + y = y + x', 6],
-      ['all x. ex y. x + y = 0', 10],
-      ['all x. 0 + x = x', 14],
-      ['all x. 1 * x = x', 14],
-      ['ex x. all y. x + y = y', 18],
-      ['all x. all y. all z. (y + z) * x = y * x + z * x', 22],
-      ['neg(0) = 0', 26],
-      ['all x. all y. all z. x + y = x + z -> y = z', 40],
-      ['all x. x * 0 = 0', 46],
-      ['all x. neg(neg(x)) = x', 50]
-    ]
-  },
-  bool: {
-    name: '1階・ブール代数', kind: 'fol', logic: 'LK', rules: FOL_RULES,
-    // + (結び, 優先順位1) と * (交わり, 優先順位2)
-    sig: {
-      consts: ['0', '1'],
-      funcs: { comp: 1 },
-      ops: [{ sym: '+', prec: 1 }, { sym: '*', prec: 2 }],
-      preds: {}, lt: false
-    },
-    axioms: [
-      ['交わりの可換律', 'all x. all y. x * y = y * x'],
-      ['結びの可換律', 'all x. all y. x + y = y + x'],
-      ['分配律1', 'all x. all y. all z. x * (y + z) = x * y + x * z'],
-      ['分配律2', 'all x. all y. all z. x + y * z = (x + y) * (x + z)'],
-      ['交わりの単位元', 'all x. x * 1 = x'],
-      ['結びの単位元', 'all x. x + 0 = x'],
-      ['補元1', 'all x. x * comp(x) = 0'],
-      ['補元2', 'all x. x + comp(x) = 1']
-    ],
-    theorems: [
-      ['all x. 0 + x = x', 14],
-      ['all x. 1 * x = x', 14],
-      ['all x. ex y. (x * y = 0 & x + y = 1)', 16],
-      ['all x. (x * comp(x) = 0 & comp(x) + x = 1)', 20],
-      ['all x. x * 0 = 0', 36],
-      ['all x. x * x = x', 40],
-      ['all x. x + x = x', 40],
-      ['all x. x + 1 = 1', 46]
-    ]
-  }
-};
-
-// グローバルな現在モード（startGame で設定）
-let CUR = null;
-let SIG = null;
-let LOGIC = 'LK';
-
-function compileTheory(T) {
-  if (T.compiled) return T;
-  validateSig(T.sig);
-  T.axiomsF = T.axioms.map(([name, s]) => ({ name, f: parseFormula(s, T.sig) }));
-  if (T.kind === 'prop') {
-    T.thms = PROP_THEOREM_SRC
-      .map(src => {
-        const f = parseFormula(src, T.sig);
-        return { src, f, pts: 10 + 2 * sizeF(f) };
-      })
-      .filter(t => !!prove(S([], [t.f])));
-  } else {
-    T.thms = T.theorems.map(([src, pts]) => {
-      const f = parseFormula(src, T.sig);
-      if (fvF(f).size > 0) console.error('閉論理式ではありません: ' + src);
-      return { src, f, pts };
-    });
-  }
-  T.compiled = true;
-  return T;
-}
-
-// ===================== 推論規則 =====================
-const RULES = {
-  id:   { label: 'Id',   cls: 'c-id',  side: null, desc: 'Γ, A ⊢ A, Δ' },
-  botL: { label: '⊥L',   cls: 'c-bot', side: null, desc: 'Γ, ⊥ ⊢ Δ' },
-  refl: { label: 'Refl', cls: 'c-eq',  side: null, desc: 'Γ ⊢ t = t, Δ' },
-  andR: { label: '∧R',   cls: 'c-and', side: 'R', conn: 'and', desc: '右辺の ∧ を分解' },
-  andL: { label: '∧L',   cls: 'c-and', side: 'L', conn: 'and', desc: '左辺の ∧ を分解' },
-  orR:  { label: '∨R',   cls: 'c-or',  side: 'R', conn: 'or',  desc: '右辺の ∨ を分解' },
-  orR1: { label: '∨R₁',  cls: 'c-or',  side: 'R', conn: 'or',  desc: '左の選択肢を選ぶ' },
-  orR2: { label: '∨R₂',  cls: 'c-or',  side: 'R', conn: 'or',  desc: '右の選択肢を選ぶ' },
-  orL:  { label: '∨L',   cls: 'c-or',  side: 'L', conn: 'or',  desc: '左辺の ∨ で場合分け' },
-  impR: { label: '→R',   cls: 'c-imp', side: 'R', conn: 'imp', desc: '前件を仮定に移す（¬ も）' },
-  impL: { label: '→L',   cls: 'c-imp', side: 'L', conn: 'imp', desc: '左辺の → を使う' },
-  allR: { label: '∀R',   cls: 'c-all', side: 'R', conn: 'all', desc: '汎化: 新しい変数 y で ∀x A を示す' },
-  allL: { label: '∀L',   cls: 'c-all', side: 'L', conn: 'all', desc: '代入: A[t/x] を得る（∀は残る）' },
-  exR:  { label: '∃R',   cls: 'c-ex',  side: 'R', conn: 'ex',  desc: '代入: 証拠の項 t を与える' },
-  exL:  { label: '∃L',   cls: 'c-ex',  side: 'L', conn: 'ex',  desc: '存在する対象に新しい変数 y を名付ける' },
-  rwF:  { label: '=→',   cls: 'c-eq',  side: 'rw', desc: '等式 s=t で s を t に書換' },
-  rwB:  { label: '=←',   cls: 'c-eq',  side: 'rw', desc: '等式 s=t で t を s に書換' },
-  wkL:  { label: '弱化', cls: 'c-wk',  side: 'L', conn: null, desc: '左辺の式を捨てる（整理用）' },
-  ax:   { label: '公理', cls: 'c-ax',  side: null, desc: '公理・補題を左辺に導入' }
-};
-const RULE_ORDER = ['id', 'botL', 'refl', 'andR', 'andL', 'orR', 'orR1', 'orR2', 'orL', 'impR', 'impL',
-                    'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL'];
-
-const rep = (arr, i, ...xs) => [...arr.slice(0, i), ...xs, ...arr.slice(i + 1)];
-const S = (L, R) => ({ L, R });
-
-function freshName(seq, base) {
-  const used = fvSeq(seq);
-  let n = base, i = 1;
-  while (used.has(n) || SIG.consts.includes(n) ||
-         Object.prototype.hasOwnProperty.call(SIG.funcs, n) || KEYWORDS.has(n)) {
-    n = base + (i++);
-  }
-  return n;
-}
-
-function premises(seq, name, side, idx, opts = {}) {
-  const { L, R } = seq;
-  if (name === 'ax') {
-    if (L.some(g => keyF(g) === keyF(opts.inst))) return { err: '同じ式がすでに左辺にあります' };
-    return [S([...L, opts.inst], R)];
-  }
-  if (!CUR.rules.includes(name)) return { err: 'このモードでは使えないルールです' };
-  switch (name) {
-    case 'id':
-      for (const a of L) for (const b of R) if (keyF(a) === keyF(b)) return [];
-      return { err: 'Id: 左辺と右辺に同じ式がありません' };
-    case 'botL':
-      return L.some(f => f.t === 'bot') ? [] : { err: '⊥L: 左辺に ⊥ がありません' };
-    case 'refl':
-      if (R.some(f => f.t === 'atom' && f.p === '=' && keyT(f.args[0]) === keyT(f.args[1]))) return [];
-      return { err: 'Refl: 右辺に t = t の形の式がありません' };
-  }
-
-  if (name === 'rwF' || name === 'rwB') {
-    const eqf = L[opts.eq];
-    if (!eqf || eqf.t !== 'atom' || eqf.p !== '=') return { err: '左辺の等式を選んでください' };
-    if (side === 'L' && idx === opts.eq) return { err: '等式自身は書き換えられません' };
-    const arr = side === 'L' ? L : R;
-    const target = arr[idx];
-    if (!target) return { err: '書き換え対象がありません' };
-    const [s, t] = eqf.args;
-    const from = name === 'rwF' ? s : t;
-    const to = name === 'rwF' ? t : s;
-    const blocked = new Set([...fvT(from, new Set()), ...fvT(to, new Set())]);
-    const nf = rwFormula(target, from, to, blocked, new Set());
-    if (keyF(nf) === keyF(target)) {
-      return { err: '書き換えられる箇所がありません（' + fmtT(from) + ' が見つかりません）' };
-    }
-    const arr2 = rep(arr, idx, nf);
-    return [side === 'L' ? S(arr2, R) : S(L, arr2)];
-  }
-
-  const info = RULES[name];
-  if (side !== info.side) {
-    return { err: info.label + ' は' + (info.side === 'R' ? '右辺' : '左辺') + 'の式に適用します' };
-  }
-  const f = (side === 'L' ? L : R)[idx];
-  if (!f || (info.conn && f.t !== info.conn)) {
-    return { err: info.label + ': 対応する結合子・量化子の式を選んでください' };
-  }
-
-  switch (name) {
-    case 'wkL':  return [S(rep(L, idx), R)];
-    case 'andR': return [S(L, rep(R, idx, f.a)), S(L, rep(R, idx, f.b))];
-    case 'orR':  return [S(L, rep(R, idx, f.a, f.b))];
-    case 'orR1': return [S(L, rep(R, idx, f.a))];
-    case 'orR2': return [S(L, rep(R, idx, f.b))];
-    case 'impR': return [S([...L, f.a], rep(R, idx, f.b))];
-    case 'andL': return [S(rep(L, idx, f.a, f.b), R)];
-    case 'orL':  return [S(rep(L, idx, f.a), R), S(rep(L, idx, f.b), R)];
-    case 'impL':
-      if (LOGIC === 'LK') {
-        return [S(rep(L, idx), [...R, f.a]), S(rep(L, idx, f.b), R)];
+      if (!CUR.rules.includes(name)) return { err: 'このモードでは使えないルールです' };
+      switch (name) {
+        case 'id':
+          for (const a of L) for (const b of R) if (keyF(a) === keyF(b)) return [];
+          return { err: 'Id: 左辺と右辺に同じ式がありません' };
+        case 'botL':
+          return L.some(f => f.t === 'bot') ? [] : { err: '⊥L: 左辺に ⊥ がありません' };
+        case 'refl':
+          if (R.some(f => f.t === 'atom' && f.p === '=' && keyT(f.args[0]) === keyT(f.args[1]))) return [];
+          return { err: 'Refl: 右辺に t = t の形の式がありません' };
       }
-      return [S(L, [f.a]), S(rep(L, idx, f.b), R)];
-    case 'allR': {
-      if (fvSeq(seq).has(opts.y)) return { err: '∀R: 変数 ' + opts.y + ' は結論に自由に現れています' };
-      return [S(L, rep(R, idx, instantiate(f, V(opts.y))))];
-    }
-    case 'exL': {
-      if (fvSeq(seq).has(opts.y)) return { err: '∃L: 変数 ' + opts.y + ' は結論に自由に現れています' };
-      return [S(rep(L, idx, instantiate(f, V(opts.y))), R)];
-    }
-    case 'allL': {
-      const inst = instantiate(f, opts.term);
-      if (L.some(g => keyF(g) === keyF(inst))) return { err: '∀L: 同じ式がすでに左辺にあります' };
-      return [S([...L, inst], R)];
-    }
-    case 'exR': {
-      const inst = instantiate(f, opts.term);
-      if (R.some(g => keyF(g) === keyF(inst))) return { err: '∃R: 同じ式がすでに右辺にあります' };
-      return [S(L, [...R, inst])];
-    }
-  }
-  return { err: '未知のルール' };
-}
 
-// ===================== 命題論理用の自動証明器（ヒント・可証性判定） =====================
-function seqKey(seq) {
-  const k = arr => [...new Set(arr.map(f => keyF(f)))].sort().join(',');
-  return k(seq.L) + '|-' + k(seq.R);
-}
-
-function prove(seq, path = new Set()) {
-  const key = seqKey(seq);
-  if (path.has(key)) return null;
-  path.add(key);
-  try {
-    const { L, R } = seq;
-    const classical = LOGIC === 'LK';
-
-    const attempt = (name, idx) => {
-      const ps = premises(seq, name, RULES[name].side, idx);
-      if (ps.err) return null;
-      const children = [];
-      for (const p of ps) {
-        const c = prove(p, path);
-        if (!c) return null;
-        children.push(c);
+      if (name === 'rwF' || name === 'rwB') {
+        const eqf = L[opts.eq];
+        if (!eqf || eqf.t !== 'atom' || eqf.p !== '=') return { err: '左辺の等式を選んでください' };
+        if (side === 'L' && idx === opts.eq) return { err: '等式自身は書き換えられません' };
+        const arr = side === 'L' ? L : R;
+        const target = arr[idx];
+        if (!target) return { err: '書き換え対象がありません' };
+        const [s, t] = eqf.args;
+        const from = name === 'rwF' ? s : t;
+        const to = name === 'rwF' ? t : s;
+        const blocked = new Set([...fvT(from, new Set()), ...fvT(to, new Set())]);
+        const nf = rwFormula(target, from, to, blocked, new Set());
+        if (keyF(nf) === keyF(target)) {
+          return { err: '書き換えられる箇所がありません（' + fmtT(from) + ' が見つかりません）' };
+        }
+        const arr2 = rep(arr, idx, nf);
+        return [side === 'L' ? S(arr2, R) : S(L, arr2)];
       }
-      return { rule: { name, idx }, children };
+
+      const info = RULES[name];
+      if (side !== info.side) {
+        return { err: info.label + ' は' + (info.side === 'R' ? '右辺' : '左辺') + 'の式に適用します' };
+      }
+      const f = (side === 'L' ? L : R)[idx];
+      if (!f || (info.conn && f.t !== info.conn)) {
+        return { err: info.label + ': 対応する結合子・量化子の式を選んでください' };
+      }
+
+      switch (name) {
+        case 'wkL': return [S(rep(L, idx), R)];
+        case 'andR': return [S(L, rep(R, idx, f.a)), S(L, rep(R, idx, f.b))];
+        case 'orR': return [S(L, rep(R, idx, f.a, f.b))];
+        case 'orR1': return [S(L, rep(R, idx, f.a))];
+        case 'orR2': return [S(L, rep(R, idx, f.b))];
+        case 'impR': return [S([...L, f.a], rep(R, idx, f.b))];
+        case 'andL': return [S(rep(L, idx, f.a, f.b), R)];
+        case 'orL': return [S(rep(L, idx, f.a), R), S(rep(L, idx, f.b), R)];
+        case 'impL':
+          if (LOGIC === 'LK') {
+            return [S(rep(L, idx), [...R, f.a]), S(rep(L, idx, f.b), R)];
+          }
+          return [S(L, [f.a]), S(rep(L, idx, f.b), R)];
+        case 'allR': {
+          if (fvSeq(seq).has(opts.y)) return { err: '∀R: 変数 ' + opts.y + ' は結論に自由に現れています' };
+          return [S(L, rep(R, idx, instantiate(f, V(opts.y))))];
+        }
+        case 'exL': {
+          if (fvSeq(seq).has(opts.y)) return { err: '∃L: 変数 ' + opts.y + ' は結論に自由に現れています' };
+          return [S(rep(L, idx, instantiate(f, V(opts.y))), R)];
+        }
+        case 'allL': {
+          const inst = instantiate(f, opts.term);
+          if (L.some(g => keyF(g) === keyF(inst))) return { err: '∀L: 同じ式がすでに左辺にあります' };
+          return [S([...L, inst], R)];
+        }
+        case 'exR': {
+          const inst = instantiate(f, opts.term);
+          if (R.some(g => keyF(g) === keyF(inst))) return { err: '∃R: 同じ式がすでに右辺にあります' };
+          return [S(L, [...R, inst])];
+        }
+      }
+      return { err: '未知のルール' };
+    }
+
+    // ===================== 命題論理用の自動証明器（ヒント・可証性判定） =====================
+    function seqKey(seq) {
+      const k = arr => [...new Set(arr.map(f => keyF(f)))].sort().join(',');
+      return k(seq.L) + '|-' + k(seq.R);
+    }
+
+    function prove(seq, path = new Set()) {
+      const key = seqKey(seq);
+      if (path.has(key)) return null;
+      path.add(key);
+      try {
+        const { L, R } = seq;
+        const classical = LOGIC === 'LK';
+
+        const attempt = (name, idx) => {
+          const ps = premises(seq, name, RULES[name].side, idx);
+          if (ps.err) return null;
+          const children = [];
+          for (const p of ps) {
+            const c = prove(p, path);
+            if (!c) return null;
+            children.push(c);
+          }
+          return { rule: { name, idx }, children };
+        };
+
+        for (const a of L) for (const b of R) if (keyF(a) === keyF(b)) return attempt('id', 0);
+        if (LOGIC !== 'LM' && L.some(f => f.t === 'bot')) return attempt('botL', 0);
+
+        const invertible = [];
+        L.forEach((f, i) => { if (f.t === 'and') invertible.push(['andL', i]); });
+        R.forEach((f, i) => { if (f.t === 'imp') invertible.push(['impR', i]); });
+        if (classical) R.forEach((f, i) => { if (f.t === 'or') invertible.push(['orR', i]); });
+        R.forEach((f, i) => { if (f.t === 'and') invertible.push(['andR', i]); });
+        L.forEach((f, i) => { if (f.t === 'or') invertible.push(['orL', i]); });
+        if (classical) L.forEach((f, i) => { if (f.t === 'imp') invertible.push(['impL', i]); });
+        if (invertible.length > 0) {
+          const [name, idx] = invertible[0];
+          return attempt(name, idx);
+        }
+
+        if (!classical) {
+          const cands = [];
+          R.forEach((f, i) => { if (f.t === 'or') { cands.push(['orR1', i]); cands.push(['orR2', i]); } });
+          L.forEach((f, i) => { if (f.t === 'imp') cands.push(['impL', i]); });
+          for (const [name, idx] of cands) {
+            const r = attempt(name, idx);
+            if (r) return r;
+          }
+        }
+        return null;
+      } finally {
+        path.delete(key);
+      }
+    }
+
+    // ===================== ゲーム状態 =====================
+    const $ = id => document.getElementById(id);
+    const el = (tag, cls, text) => {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
     };
 
-    for (const a of L) for (const b of R) if (keyF(a) === keyF(b)) return attempt('id', 0);
-    if (LOGIC !== 'LM' && L.some(f => f.t === 'bot')) return attempt('botL', 0);
-
-    const invertible = [];
-    L.forEach((f, i) => { if (f.t === 'and') invertible.push(['andL', i]); });
-    R.forEach((f, i) => { if (f.t === 'imp') invertible.push(['impR', i]); });
-    if (classical) R.forEach((f, i) => { if (f.t === 'or') invertible.push(['orR', i]); });
-    R.forEach((f, i) => { if (f.t === 'and') invertible.push(['andR', i]); });
-    L.forEach((f, i) => { if (f.t === 'or') invertible.push(['orL', i]); });
-    if (classical) L.forEach((f, i) => { if (f.t === 'imp') invertible.push(['impL', i]); });
-    if (invertible.length > 0) {
-      const [name, idx] = invertible[0];
-      return attempt(name, idx);
-    }
-
-    if (!classical) {
-      const cands = [];
-      R.forEach((f, i) => { if (f.t === 'or') { cands.push(['orR1', i]); cands.push(['orR2', i]); } });
-      L.forEach((f, i) => { if (f.t === 'imp') cands.push(['impL', i]); });
-      for (const [name, idx] of cands) {
-        const r = attempt(name, idx);
-        if (r) return r;
-      }
-    }
-    return null;
-  } finally {
-    path.delete(key);
-  }
-}
-
-// ===================== ゲーム状態 =====================
-const $ = id => document.getElementById(id);
-const el = (tag, cls, text) => {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-};
-
-const state = {
-  limit: 0,
-  timeLeft: 0,
-  timer: null,
-  score: 0,
-  solved: [],
-  queue: [],
-  current: null,
-  root: null,
-  penalty: 0,
-  armed: null,
-  pending: null,
-  locked: false,
-  over: false,
-  lib: [],
-  libCount: 0,
-  lemmaCount: 0,
-  modeKey: null
-};
-let dragRule = null;
-const modal = { node: null, name: null, side: null, idx: null };
-const am = { node: null, entry: null, inputs: [], last: null };
-
-function toast(msg, kind) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.className = 'show ' + (kind || '');
-  clearTimeout(toast.h);
-  toast.h = setTimeout(() => { t.className = ''; }, 2400);
-}
-function fmtTime(s) {
-  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-}
-function updateStats() {
-  $('stMode').textContent = CUR ? CUR.name : '-';
-  $('stTime').textContent = state.limit ? fmtTime(state.timeLeft) : '∞';
-  $('stScore').textContent = state.score;
-  $('stSolved').textContent = state.solved.length;
-}
-
-function buildQueue() {
-  return CUR.thms
-    .map(t => ({ t, k: t.pts + Math.random() * 4 }))
-    .sort((a, b) => a.k - b.k)
-    .map(x => x.t);
-}
-
-// ===================== 公理・補題ライブラリ =====================
-function makeEntry(kind, name, f) {
-  const id = 'L' + (++state.libCount);
-  if (CUR.kind === 'prop') {
-    const ps = atomsOf(f);
-    return {
-      id, kind, name, f,
-      params: ps.map(p => ({ name: p, type: 'formula', hint: '式（空欄 = ' + p + ' のまま）' })),
-      build: vals => {
-        const m = {};
-        ps.forEach((p, i) => { if (vals[i]) m[p] = vals[i]; });
-        return substProp(f, m);
-      }
+    const state = {
+      gen: 0,            // ゲームの世代番号（古いタイマー・setTimeout を無効化するため）
+      limit: 0,
+      timeLeft: 0,
+      timer: null,
+      score: 0,
+      solved: [],
+      queue: [],
+      current: null,
+      root: null,
+      penalty: 0,
+      armed: null,
+      pending: null,
+      locked: false,
+      over: false,
+      lib: [],
+      libCount: 0,
+      lemmaCount: 0
     };
-  }
-  const vs = leadingAll(f);
-  return {
-    id, kind, name, f,
-    params: vs.map(v => ({ name: v, type: 'term', hint: '項（空欄 = ∀' + v + ' を残す）' })),
-    build: vals => buildInst(f, vals)
-  };
-}
+    let dragRule = null;
+    const modal = { node: null, name: null, side: null, idx: null };
+    const am = { node: null, entry: null, inputs: [], last: null };
 
-function makeSchema(s) {
-  return {
-    id: 'L' + (++state.libCount),
-    kind: 'schema',
-    name: s.name,
-    display: 'P(0) ∧ ∀x (P(x) → P(S(x))) → ∀x P(x)　（P は任意の論理式）',
-    params: [{ name: 'P(x)', type: 'formula', hint: 'x を含む論理式 例: 0 + x = x' }],
-    build: vals => {
-      const phi = vals[0];
-      if (!phi) throw new Error('論理式 P(x) を入力してください');
-      const x = 'x';
-      const zero = Fn('0', []);
-      const sx = Fn('S', [V(x)]);
-      return Bin('imp',
-        Bin('and', substF(phi, x, zero), Q('all', x, Bin('imp', phi, substF(phi, x, sx)))),
-        Q('all', x, phi));
+    function toast(msg, kind) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.className = 'show ' + (kind || '');
+      clearTimeout(toast.h);
+      toast.h = setTimeout(() => { t.className = ''; }, 2400);
     }
-  };
-}
+    function fmtTime(s) {
+      return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }
+    function updateStats() {
+      $('stMode').textContent = CUR ? CUR.name : '-';
+      $('stTime').textContent = state.limit ? fmtTime(state.timeLeft) : '∞';
+      $('stScore').textContent = state.score;
+      $('stSolved').textContent = state.solved.length;
+      $('stTimeWrap').classList.toggle('low', !!state.limit && state.timeLeft <= 30 && !state.over);
+    }
 
-function initLibrary() {
-  state.libCount = 0;
-  state.lemmaCount = 0;
-  const lib = [];
-  CUR.axiomsF.forEach(a => lib.push(makeEntry('axiom', a.name, a.f)));
-  (CUR.schemas || []).forEach(s => lib.push(makeSchema(s)));
-  return lib;
-}
+    // トップ画面に戻ったときにヘッダーの表示を初期状態へ戻す
+    function resetHeader() {
+      $('stMode').textContent = '-';
+      $('stTime').textContent = '-';
+      $('stScore').textContent = '0';
+      $('stSolved').textContent = '0';
+      $('stTimeWrap').classList.remove('low');
+    }
 
-function addLemma(th) {
-  if (state.lib.some(e => e.f && keyF(e.f) === keyF(th.f))) return;
-  state.lemmaCount++;
-  state.lib.push(makeEntry('lemma', '補題 ' + state.lemmaCount, th.f));
-  renderLibrary();
-}
+    function buildQueue() {
+      return CUR.thms
+        .map(t => ({ t, k: t.pts + Math.random() * 4 }))
+        .sort((a, b) => a.k - b.k)
+        .map(x => x.t);
+    }
 
-const KIND_LABEL = { axiom: '公理', schema: 'スキーマ', lemma: '補題' };
+    // ===================== 公理・補題ライブラリ =====================
+    function makeEntry(kind, name, f) {
+      const id = 'L' + (++state.libCount);
+      if (CUR.kind === 'prop') {
+        const ps = atomsOf(f);
+        return {
+          id, kind, name, f,
+          params: ps.map(p => ({ name: p, type: 'formula', hint: '式（空欄 = ' + p + ' のまま）' })),
+          build: vals => {
+            const m = {};
+            ps.forEach((p, i) => { if (vals[i]) m[p] = vals[i]; });
+            return substProp(f, m);
+          }
+        };
+      }
+      const vs = leadingAll(f);
+      return {
+        id, kind, name, f,
+        params: vs.map(v => ({ name: v, type: 'term', hint: '項（空欄 = ∀' + v + ' を残す）' })),
+        build: vals => buildInst(f, vals)
+      };
+    }
 
-function renderLibrary() {
-  const box = $('lib');
-  box.innerHTML = '';
-  state.lib.forEach(en => {
-    const key = 'ax:' + en.id;
-    const d = el('div', 'libitem k-' + en.kind);
-    d.dataset.arm = key;
-    d.draggable = true;
-    d.appendChild(el('div', 'libname', '【' + KIND_LABEL[en.kind] + '】' + en.name));
-    d.appendChild(el('div', 'libf', en.display || fmtF(en.f)));
-    d.addEventListener('click', () => {
-      state.armed = state.armed === key ? null : key;
-      state.pending = null;
+    // 帰納法スキーマ: P(0) ∧ ∀v (P(v) → P(S(v))) → ∀v P(v)
+    // params[0] = P（論理式）、params[1] = 帰納法の変数 v（空欄なら x）
+    function makeSchema(s) {
+      return {
+        id: 'L' + (++state.libCount),
+        kind: 'schema',
+        name: s.name,
+        display: 'P(0) ∧ ∀v (P(v) → P(S(v))) → ∀v P(v)　（P は任意の論理式、v は任意の変数）',
+        params: [
+          { name: 'P', type: 'formula', hint: '帰納法の変数を含む論理式 例: 0 + y = y' },
+          { name: '変数 v', type: 'var', hint: '帰納法の変数（空欄 = x） 例: y' }
+        ],
+        build: vals => {
+          const phi = vals[0];
+          if (!phi) throw new Error('論理式 P を入力してください');
+          const v = vals[1] ? vals[1].n : 'x';
+          const zero = Fn('0', []);
+          const sv = Fn('S', [V(v)]);
+          return Bin('imp',
+            Bin('and', substF(phi, v, zero), Q('all', v, Bin('imp', phi, substF(phi, v, sv)))),
+            Q('all', v, phi));
+        }
+      };
+    }
+
+    function initLibrary() {
+      state.libCount = 0;
+      state.lemmaCount = 0;
+      const lib = [];
+      CUR.axiomsF.forEach(a => lib.push(makeEntry('axiom', a.name, a.f)));
+      (CUR.schemas || []).forEach(s => lib.push(makeSchema(s)));
+      return lib;
+    }
+
+    function addLemma(th) {
+      if (state.lib.some(e => e.f && keyF(e.f) === keyF(th.f))) return;
+      state.lemmaCount++;
+      state.lib.push(makeEntry('lemma', '補題 ' + state.lemmaCount, th.f));
+      renderLibrary();
+    }
+
+    const KIND_LABEL = { axiom: '公理', schema: 'スキーマ', lemma: '補題' };
+
+    function renderLibrary() {
+      const box = $('lib');
+      box.innerHTML = '';
+      state.lib.forEach(en => {
+        const key = 'ax:' + en.id;
+        const d = el('div', 'libitem k-' + en.kind);
+        d.dataset.arm = key;
+        d.draggable = true;
+        d.appendChild(el('div', 'libname', '【' + KIND_LABEL[en.kind] + '】' + en.name));
+        d.appendChild(el('div', 'libf', en.display || fmtF(en.f)));
+        d.addEventListener('click', () => {
+          state.armed = state.armed === key ? null : key;
+          state.pending = null;
+          refreshArmed();
+          render();
+        });
+        d.addEventListener('dragstart', e => {
+          dragRule = key;
+          state.armed = key;
+          state.pending = null;
+          e.dataTransfer.setData('text/plain', key);
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+        d.addEventListener('dragend', () => { dragRule = null; });
+        box.appendChild(d);
+      });
       refreshArmed();
-      render();
-    });
-    d.addEventListener('dragstart', e => {
-      dragRule = key;
-      state.armed = key;
-      state.pending = null;
-      e.dataTransfer.setData('text/plain', key);
-      e.dataTransfer.effectAllowed = 'copy';
-    });
-    d.addEventListener('dragend', () => { dragRule = null; });
-    box.appendChild(d);
-  });
-  refreshArmed();
-}
+    }
 
-function findEntry(id) { return state.lib.find(e => e.id === id); }
+    function findEntry(id) { return state.lib.find(e => e.id === id); }
 
-// ===================== 開始・終了 =====================
-function startGame() {
-  const key = document.querySelector('input[name=mode]:checked').value;
-
-  state.modeKey = key;
-
-  CUR = THEORIES[key];
-  SIG = CUR.sig;
-  LOGIC = CUR.logic;
-  
-  try {
-    compileTheory(CUR);
-  } catch (e) {
-    alert('モードの読み込みに失敗しました: ' + e.message);
-    return;
-  }
-  state.limit = parseInt($('timeSel').value, 10);
-  state.timeLeft = state.limit;
-  state.score = 0;
-  state.solved = [];
-  state.over = false;
-  state.lib = initLibrary();
-  state.queue = buildQueue();
-  $('start').style.display = 'none';
-  $('game').style.display = 'block';
-  $('overlay').style.display = 'none';
-  $('btnHint').style.display = CUR.kind === 'prop' ? '' : 'none';
-  buildPalette();
-  renderLibrary();
-  nextTheorem();
-  updateStats();
-  clearInterval(state.timer);
-  if (state.limit) {
-    state.timer = setInterval(() => {
-      state.timeLeft--;
+    // ===================== 開始・終了 =====================
+    function startGame() {
+      const key = document.querySelector('input[name=mode]:checked').value;
+      CUR = THEORIES[key];
+      SIG = CUR.sig;
+      LOGIC = CUR.logic;
+      try {
+        compileTheory(CUR);
+      } catch (e) {
+        alert('モードの読み込みに失敗しました: ' + e.message);
+        return;
+      }
+      clearInterval(state.timer);
+      state.gen++;
+      const gen = state.gen;
+      state.limit = parseInt($('timeSel').value, 10);
+      state.timeLeft = state.limit;
+      state.score = 0;
+      state.solved = [];
+      state.over = false;
+      state.lib = initLibrary();
+      state.queue = buildQueue();
+      $('start').style.display = 'none';
+      $('game').style.display = 'block';
+      $('overlay').style.display = 'none';
+      $('btnHint').style.display = CUR.kind === 'prop' ? '' : 'none';
+      $('btnAuto').style.display = CUR.kind === 'prop' ? 'none' : '';
+      buildPalette();
+      renderLibrary();
+      nextTheorem();
       updateStats();
-      if (state.timeLeft <= 0) endGame('時間切れ！');
-    }, 1000);
-  }
-}
-
-function nextTheorem() {
-  if (state.queue.length === 0) { endGame('全問クリア！'); return; }
-  state.current = state.queue.shift();
-  loadCurrent();
-}
-
-function loadCurrent() {
-  state.root = { seq: S([], [state.current.f]), rule: null, children: [] };
-  state.penalty = 0;
-  state.armed = null;
-  state.pending = null;
-  state.locked = false;
-  $('theorem').textContent = '⊢ ' + fmtF(state.current.f) + '    （' + state.current.pts + '点）';
-  refreshArmed();
-  render();
-}
-
-
-
-// ===================== スコアパネル =====================
-
-
-
-function mountScorePanel(container, result) {
-  const gameName = 'シーケント計算ゲーム';
-
-  const rankingOptions = {
-    mode: result.modeKey,
-    limit: result.limit
-  };
-
-  const panel = el('section');
-  panel.style.marginTop = '24px';
-
-  const timeLabel = result.limit === 0
-    ? '無制限（練習）'
-    : fmtTime(result.limit);
-
-  panel.appendChild(el('h3', '', 'スコア登録'));
-
-  panel.appendChild(
-    el(
-      'p',
-      'note',
-      result.modeName + ' ／ ' + timeLabel +
-      ' ／ ' + result.score + '点'
-    )
-  );
-
-  panel.appendChild(
-    el(
-      'p',
-      'note',
-      '登録は任意です。登録した名前とスコアはランキングに公開されます。' +
-      '登録しない場合は、そのまま「もう一度」を押してください。'
-    )
-  );
-
-  const form = el('form');
-  form.id = 'scoreEntryForm';
-
-  const label = el('label', '', 'ニックネーム ');
-  const input = el('input', 'aminput');
-
-  input.type = 'text';
-  input.required = true;
-  input.maxLength = 30;
-  input.placeholder = '1〜30文字';
-  input.autocomplete = 'nickname';
-
-  label.appendChild(input);
-  form.appendChild(label);
-
-  const saveMessage = el('p', 'note');
-  saveMessage.setAttribute('role', 'status');
-
-  panel.appendChild(form);
-  panel.appendChild(saveMessage);
-  container.appendChild(panel);
-
-  const submitButton = $('btnRegisterScore');
-
-  // 前回の登録状態をリセットする。
-  submitButton.disabled = false;
-  submitButton.textContent = 'スコアを登録する';
-
-  let submitting = false;
-  let submitted = false;
-
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-
-    if (submitting || submitted) {
-      return;
-    }
-
-    const playerName = input.value.trim();
-
-    if (!playerName || playerName.length > 30) {
-      saveMessage.textContent = '名前を1〜30文字で入力してください。';
-      input.focus();
-      return;
-    }
-
-    submitting = true;
-    input.disabled = true;
-    submitButton.disabled = true;
-    submitButton.textContent = '登録中…';
-
-    saveMessage.textContent = 'スコアを送信中…';
-
-    try {
-      await postScore(
-        gameName,
-        playerName,
-        result.score,
-        rankingOptions
-      );
-
-      submitted = true;
-
-      // 次の結果画面に切り替わっていたら、表示を更新しない。
-      if (!panel.isConnected) {
-        return;
+      window.scrollTo(0, 0);
+      if (state.limit) {
+        state.timer = setInterval(() => {
+          if (gen !== state.gen || state.over) return;
+          state.timeLeft--;
+          updateStats();
+          if (state.timeLeft <= 0) endGame('時間切れ！');
+        }, 1000);
       }
-
-      submitButton.textContent = '登録済み';
-
-      saveMessage.textContent =
-        result.score + '点の記録を登録しました。';
-    } catch (error) {
-      if (!panel.isConnected) {
-        return;
-      }
-
-      saveMessage.textContent =
-        '保存完了を確認できませんでした：' + error.message +
-        '。保存済みの場合もあるため、再送すると重複登録される可能性があります。';
-
-      input.disabled = false;
-      submitButton.disabled = false;
-      submitButton.textContent = 'スコアを登録する';
-    } finally {
-      submitting = false;
     }
-  });
-}
 
+    function nextTheorem() {
+      if (state.queue.length === 0) { endGame('全問クリア！'); return; }
+      state.current = state.queue.shift();
+      loadCurrent();
+    }
 
-function endGame(title) {
-  if (state.over) {
-    return;
-  }
-
-  clearInterval(state.timer);
-  state.over = true;
-
-  closeModal();
-  closeAxModal();
-
-  // 終了時点の情報を固定する。
-  // 通信中に次のゲームを開始しても、送信内容は変わらない。
-  const result = Object.freeze({
-    modeKey: state.modeKey,
-    modeName: CUR.name,
-    limit: state.limit,
-    score: state.score
-  });
-
-  $('ovTitle').textContent = title || '終了';
-
-  const body = $('ovBody');
-  body.replaceChildren();
-
-  body.appendChild(
-    el('p', '', 'モード: ' + result.modeName)
-  );
-
-  body.appendChild(
-    el(
-      'p',
-      '',
-      'スコア: ' + result.score +
-      ' 点 / 証明した定理: ' + state.solved.length + ' 個'
-    )
-  );
-
-  const ul = el('ul');
-
-  state.solved.forEach(s => {
-    ul.appendChild(
-      el(
-        'li',
-        '',
-        '⊢ ' + fmtF(s.f) + '  (+' + s.pts + ')'
-      )
-    );
-  });
-
-  body.appendChild(ul);
-
-  // 名前入力・任意のスコア登録・ランキングを追加する。
-  mountScorePanel(body, result);
-
-  $('overlay').style.display = 'flex';
-}
-
-// ===================== パレット =====================
-function buildPalette() {
-  const box = $('blocks');
-  box.innerHTML = '';
-  RULE_ORDER.filter(n => CUR.rules.includes(n)).forEach(name => {
-    const r = RULES[name];
-    const b = el('div', 'block ' + r.cls);
-    b.draggable = true;
-    b.dataset.rule = name;
-    b.appendChild(document.createTextNode(r.label));
-    b.appendChild(el('small', '', r.desc));
-    b.addEventListener('click', () => {
-      state.armed = state.armed === name ? null : name;
+    function loadCurrent() {
+      state.root = { seq: S([], [state.current.f]), rule: null, children: [] };
+      state.penalty = 0;
+      state.armed = null;
       state.pending = null;
+      state.locked = false;
+      $('theorem').textContent = '⊢ ' + fmtF(state.current.f) + '    （' + state.current.pts + '点）';
       refreshArmed();
       render();
-    });
-    b.addEventListener('dragstart', e => {
-      dragRule = name;
-      state.armed = name;
-      state.pending = null;
-      e.dataTransfer.setData('text/plain', name);
-      e.dataTransfer.effectAllowed = 'copy';
-    });
-    b.addEventListener('dragend', () => { dragRule = null; });
-    box.appendChild(b);
-  });
-}
-function refreshArmed() {
-  document.querySelectorAll('#blocks .block').forEach(b => {
-    b.classList.toggle('armed', b.dataset.rule === state.armed);
-  });
-  document.querySelectorAll('#lib .libitem').forEach(b => {
-    b.classList.toggle('armed', b.dataset.arm === state.armed);
-  });
-}
-
-// ===================== ルール適用 =====================
-function applyRule(node, name, side, idx, opts = {}) {
-  if (state.locked || state.over || node.rule) return false;
-  const res = premises(node.seq, name, side, idx, opts);
-  if (res.err) { toast(res.err, 'bad'); return false; }
-  node.rule = { name, side, idx, detail: opts.detail || '' };
-  node.children = res.map(s => ({ seq: s, rule: null, children: [] }));
-  state.armed = null;
-  state.pending = null;
-  refreshArmed();
-  render();
-  checkSolved();
-  return true;
-}
-
-function candidates(node, name) {
-  const r = RULES[name];
-  const out = [];
-  if (r.side === 'L' || r.side === 'R') {
-    const arr = r.side === 'R' ? node.seq.R : node.seq.L;
-    arr.forEach((f, i) => { if (!r.conn || f.t === r.conn) out.push(i); });
-  }
-  return out;
-}
-
-function onGoal(node, name) {
-  if (state.locked || state.over || node.rule) return;
-  name = name || state.armed;
-  if (!name) { toast('先にルールブロックを選んでください', 'bad'); return; }
-  if (name.startsWith('ax:')) {
-    const en = findEntry(name.slice(3));
-    if (en) openAxModal(node, en);
-    return;
-  }
-  const r = RULES[name];
-  if (!r.side) { applyRule(node, name, null, 0); return; }
-  if (r.side === 'rw') { toast('等式と書き換え対象の式（チップ）を順にクリックしてください', 'bad'); return; }
-  const c = candidates(node, name);
-  if (c.length === 0) { toast(r.label + ' を適用できる式がありません', 'bad'); return; }
-  if (c.length > 1) { toast('適用する式（チップ）を選んでください', 'bad'); return; }
-  onChip(node, r.side, c[0], name);
-}
-
-function onChip(node, side, i, name) {
-  if (state.locked || state.over || node.rule) return;
-  name = name || state.armed;
-  if (!name) { toast('先にルールブロックを選んでください', 'bad'); return; }
-  if (name.startsWith('ax:')) {
-    const en = findEntry(name.slice(3));
-    if (en) openAxModal(node, en);
-    return;
-  }
-  const r = RULES[name];
-  if (!r.side) { applyRule(node, name, null, 0); return; }
-  if (r.side === 'rw') { rwFlow(node, side, i, name); return; }
-  if (side !== r.side) {
-    toast(r.label + ' は' + (r.side === 'R' ? '右辺' : '左辺') + 'の式に適用します', 'bad');
-    return;
-  }
-  const f = (side === 'L' ? node.seq.L : node.seq.R)[i];
-  if (r.conn && f.t !== r.conn) { toast(r.label + ': 対応する式を選んでください', 'bad'); return; }
-  if (name === 'allR' || name === 'exL') {
-    const y = freshName(node.seq, f.v);
-    applyRule(node, name, side, i, { y, detail: f.v + ' := ' + y });
-    return;
-  }
-  if (name === 'allL' || name === 'exR') {
-    openTermModal(node, name, side, i);
-    return;
-  }
-  applyRule(node, name, side, i);
-}
-
-function rwFlow(node, side, i, name) {
-  const p = state.pending;
-  const f = (side === 'L' ? node.seq.L : node.seq.R)[i];
-  if (!p || p.node !== node || p.name !== name) {
-    if (side !== 'L' || f.t !== 'atom' || f.p !== '=') {
-      toast('先に左辺の等式（s = t）を選んでください', 'bad');
-      return;
-    }
-    state.pending = { node, name, eq: i };
-    toast('書き換えたい式をクリックしてください');
-    render();
-    return;
-  }
-  if (side === 'L' && i === p.eq) {
-    state.pending = null;
-    toast('等式の選択を解除しました');
-    render();
-    return;
-  }
-  const [s, t] = node.seq.L[p.eq].args;
-  const detail = name === 'rwF' ? fmtT(s) + ' ⇒ ' + fmtT(t) : fmtT(t) + ' ⇒ ' + fmtT(s);
-  const eq = p.eq;
-  applyRule(node, name, side, i, { eq, detail });
-}
-
-// ===================== 項の代入ダイアログ（∀L / ∃R） =====================
-// 候補: 原子項 → 1引数の関数 → 2引数の関数・中置演算子（すべての演算子について）
-function suggestTerms(seq) {
-  const vars = [...fvSeq(seq)].sort();
-  const fresh = freshName(seq, 'a');
-  const atoms = [...SIG.consts.map(c => Fn(c)), ...vars.map(V), V(fresh)];
-  const out = [...atoms];
-  const funcs = Object.entries(SIG.funcs);
-  const unary = funcs.filter(([, ar]) => ar === 1).map(([n]) => n);
-  const binary = [
-    ...(SIG.ops || []).map(o => o.sym),
-    ...funcs.filter(([, ar]) => ar === 2).map(([n]) => n)
-  ];
-  unary.forEach(n => atoms.forEach(a => out.push(Fn(n, [a]))));
-  binary.forEach(n => atoms.forEach(a => atoms.forEach(b => out.push(Fn(n, [a, b])))));
-  const seen = new Set();
-  const uniq = [];
-  out.forEach(t => {
-    const k = fmtT(t);
-    if (!seen.has(k)) { seen.add(k); uniq.push(t); }
-  });
-  return { list: uniq.slice(0, 80), fresh };
-}
-
-function openTermModal(node, name, side, idx) {
-  const f = (side === 'L' ? node.seq.L : node.seq.R)[idx];
-  modal.node = node; modal.name = name; modal.side = side; modal.idx = idx;
-  $('mdTitle').textContent = RULES[name].label + ': ' + f.v + ' に代入する項を選ぶ';
-  $('mdFormula').textContent = (side === 'L' ? '左辺: ' : '右辺: ') + fmtF(f);
-  const box = $('mdSug');
-  box.innerHTML = '';
-  const { list, fresh } = suggestTerms(node.seq);
-  list.forEach(t => {
-    const b = el('button', fmtT(t) === fresh ? 'fresh' : '', fmtT(t));
-    if (fmtT(t) === fresh) b.title = '新しい変数（領域は空でないので自由に使えます）';
-    b.addEventListener('click', () => finishTerm(t));
-    box.appendChild(b);
-  });
-  $('mdInput').value = '';
-  $('modal').style.display = 'flex';
-  setTimeout(() => $('mdInput').focus(), 0);
-}
-function closeModal() { $('modal').style.display = 'none'; }
-function submitTermInput() {
-  const s = $('mdInput').value.trim();
-  if (!s) { toast('項を入力するか候補を選んでください', 'bad'); return; }
-  let t;
-  try { t = parseTermStr(s, SIG); }
-  catch (e) { toast('項の構文エラー: ' + e.message, 'bad'); return; }
-  finishTerm(t);
-}
-function finishTerm(t) {
-  const { node, name, side, idx } = modal;
-  const f = (side === 'L' ? node.seq.L : node.seq.R)[idx];
-  closeModal();
-  applyRule(node, name, side, idx, { term: t, detail: f.v + ' := ' + fmtT(t) });
-}
-
-// ===================== 公理・補題の導入ダイアログ =====================
-function readAmVals() {
-  return am.entry.params.map((p, i) => {
-    const s = am.inputs[i].value.trim();
-    if (!s) return null;
-    return p.type === 'term' ? parseTermStr(s, SIG) : parseFormula(s, SIG);
-  });
-}
-
-function updateAmPreview() {
-  const pv = $('amPreview');
-  try {
-    const inst = am.entry.build(readAmVals());
-    pv.textContent = fmtF(inst);
-    pv.className = '';
-  } catch (e) {
-    pv.textContent = 'エラー: ' + e.message;
-    pv.className = 'err';
-  }
-}
-
-function openAxModal(node, entry) {
-  if (entry.params.length === 0) {
-    applyRule(node, 'ax', null, 0, { inst: entry.build([]), detail: entry.name });
-    return;
-  }
-  am.node = node; am.entry = entry; am.inputs = []; am.last = null;
-  $('amTitle').textContent = '【' + KIND_LABEL[entry.kind] + '】' + entry.name + ' を左辺に追加';
-  $('amFormula').textContent = entry.display || fmtF(entry.f);
-  const box = $('amFields');
-  box.innerHTML = '';
-  entry.params.forEach(p => {
-    const row = el('div', 'amrow');
-    row.appendChild(el('label', '', p.name + ' :='));
-    const inp = document.createElement('input');
-    inp.className = 'aminput';
-    inp.placeholder = p.hint;
-    inp.autocomplete = 'off';
-    inp.addEventListener('input', updateAmPreview);
-    inp.addEventListener('focus', () => { am.last = inp; });
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') submitAm(); });
-    row.appendChild(inp);
-    box.appendChild(row);
-    am.inputs.push(inp);
-  });
-  const sug = $('amSug');
-  sug.innerHTML = '';
-  if (entry.params.some(p => p.type === 'term')) {
-    suggestTerms(node.seq).list.slice(0, 24).forEach(t => {
-      const b = el('button', '', fmtT(t));
-      b.addEventListener('click', () => {
-        const target = am.last || am.inputs.find(i => !i.value) || am.inputs[0];
-        target.value = fmtT(t);
-        target.focus();
-        updateAmPreview();
-      });
-      sug.appendChild(b);
-    });
-  }
-  updateAmPreview();
-  $('axmodal').style.display = 'flex';
-  setTimeout(() => am.inputs[0].focus(), 0);
-}
-function closeAxModal() { $('axmodal').style.display = 'none'; }
-
-function submitAm() {
-  let inst, vals;
-  try {
-    vals = readAmVals();
-    inst = am.entry.build(vals);
-  } catch (e) {
-    toast('入力エラー: ' + e.message, 'bad');
-    return;
-  }
-  const parts = [];
-  am.entry.params.forEach((p, i) => {
-    if (vals[i]) parts.push(p.name + ' := ' + am.inputs[i].value.trim());
-  });
-  const { node, entry } = am;
-  closeAxModal();
-  applyRule(node, 'ax', null, 0, {
-    inst,
-    detail: entry.name + (parts.length ? ' (' + parts.join(', ') + ')' : '')
-  });
-}
-
-// ===================== 完了判定・自動整理・ヒント =====================
-function isComplete(n) {
-  return !!n.rule && n.children.every(isComplete);
-}
-
-function checkSolved() {
-  if (!isComplete(state.root)) return;
-  const pts = Math.max(1, state.current.pts - state.penalty);
-  state.score += pts;
-  state.solved.push({ f: state.current.f, pts });
-  state.locked = true;
-  addLemma(state.current);
-  updateStats();
-  toast('証明完了！ +' + pts + '点（補題としてライブラリに追加）', 'good');
-  setTimeout(() => { if (!state.over) nextTheorem(); }, 1500);
-}
-
-function autoStepNode(node) {
-  if (node.rule) {
-    let progressed = false;
-    for (const c of node.children) if (autoStepNode(c)) progressed = true;
-    return progressed;
-  }
-  const { L, R } = node.seq;
-  const tryApply = (name, side, idx, opts) => {
-    const res = premises(node.seq, name, side, idx, opts || {});
-    if (res.err) return false;
-    node.rule = { name, side, idx, detail: (opts && opts.detail) || '' };
-    node.children = res.map(s => ({ seq: s, rule: null, children: [] }));
-    return true;
-  };
-  if (tryApply('id', null, 0) || tryApply('botL', null, 0) || tryApply('refl', null, 0)) return true;
-  for (let i = 0; i < L.length; i++) {
-    if (L[i].t === 'and' && tryApply('andL', 'L', i)) return true;
-  }
-  for (let i = 0; i < L.length; i++) {
-    if (L[i].t === 'ex') {
-      const y = freshName(node.seq, L[i].v);
-      if (tryApply('exL', 'L', i, { y, detail: L[i].v + ' := ' + y })) return true;
-    }
-  }
-  for (let i = 0; i < R.length; i++) {
-    if (R[i].t === 'or' && tryApply('orR', 'R', i)) return true;
-  }
-  for (let i = 0; i < R.length; i++) {
-    if (R[i].t === 'imp' && tryApply('impR', 'R', i)) return true;
-  }
-  for (let i = 0; i < R.length; i++) {
-    if (R[i].t === 'all') {
-      const y = freshName(node.seq, R[i].v);
-      if (tryApply('allR', 'R', i, { y, detail: R[i].v + ' := ' + y })) return true;
-    }
-  }
-  for (let i = 0; i < R.length; i++) {
-    if (R[i].t === 'and' && tryApply('andR', 'R', i)) return true;
-  }
-  for (let i = 0; i < L.length; i++) {
-    if (L[i].t === 'or' && tryApply('orL', 'L', i)) return true;
-  }
-  // →L が可逆なのは古典論理のみ
-  if (LOGIC === 'LK') {
-    for (let i = 0; i < L.length; i++) {
-      if (L[i].t === 'imp' && tryApply('impL', 'L', i)) return true;
-    }
-  }
-  return false;
-}
-
-function autoOrganize() {
-  if (state.locked || state.over) return;
-  let any = false, guard = 0;
-  while (guard++ < 400 && autoStepNode(state.root)) any = true;
-  if (!any) {
-    toast(CUR.kind === 'prop'
-      ? '自動で進められる手はありません。選択や場合分けを考えましょう'
-      : '自動で進められる手はありません。公理の導入・代入・書き換えを考えましょう', 'bad');
-    return;
-  }
-  state.penalty += 3;
-  state.armed = null;
-  state.pending = null;
-  refreshArmed();
-  toast('自動整理しました (-3点)');
-  render();
-  checkSolved();
-}
-
-function firstOpen(n) {
-  if (!n.rule) return n;
-  for (const c of n.children) {
-    const o = firstOpen(c);
-    if (o) return o;
-  }
-  return null;
-}
-
-function giveHint() {
-  if (state.locked || state.over || CUR.kind !== 'prop') return;
-  const open = firstOpen(state.root);
-  if (!open) return;
-  const p = prove(open.seq);
-  if (!p) {
-    toast('このゴールは（補題なしでは）証明できません。前の手を取り消してください', 'bad');
-    return;
-  }
-  state.penalty += 5;
-  const { name, idx } = p.rule;
-  const side = RULES[name].side;
-  const res = premises(open.seq, name, side, idx);
-  open.rule = { name, side, idx, detail: '' };
-  open.children = res.map(s => ({ seq: s, rule: null, children: [] }));
-  state.armed = null;
-  state.pending = null;
-  refreshArmed();
-  toast('ヒント: ' + RULES[name].label + ' を適用しました (-5点)');
-  render();
-  checkSolved();
-}
-
-// ===================== 描画 =====================
-function chipClasses(node, side, i, f) {
-  const out = [];
-  const name = state.armed;
-  if (!name || node.rule || name.startsWith('ax:')) return out;
-  const r = RULES[name];
-  if (r.side === 'rw') {
-    const p = state.pending;
-    if (p && p.node === node && p.name === name) {
-      out.push(side === 'L' && i === p.eq ? 'sel' : 'cand');
-    } else if (side === 'L' && f.t === 'atom' && f.p === '=') {
-      out.push('cand');
-    }
-  } else if (r.side && r.side === side && (!r.conn || r.conn === f.t)) {
-    out.push('cand');
-  }
-  return out;
-}
-
-function chipsEl(node, side) {
-  const frag = document.createDocumentFragment();
-  const arr = side === 'L' ? node.seq.L : node.seq.R;
-  arr.forEach((f, i) => {
-    const chip = el('span', 'chip', fmtF(f));
-    if (!node.rule) {
-      chipClasses(node, side, i, f).forEach(c => chip.classList.add(c));
-      chip.addEventListener('click', e => {
-        e.stopPropagation();
-        onChip(node, side, i);
-      });
-      chip.addEventListener('dragover', e => { e.preventDefault(); chip.classList.add('over'); });
-      chip.addEventListener('dragleave', () => chip.classList.remove('over'));
-      chip.addEventListener('drop', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        chip.classList.remove('over');
-        onChip(node, side, i, dragRule);
-      });
-    }
-    frag.appendChild(chip);
-    if (i < arr.length - 1) frag.appendChild(document.createTextNode(','));
-  });
-  return frag;
-}
-
-function renderNode(node) {
-  const wrap = el('div', 'node');
-  const goal = el('div', 'goal ' + (node.rule ? 'done' : 'open'));
-
-  const seqSpan = el('span', 'seq');
-  seqSpan.appendChild(chipsEl(node, 'L'));
-  seqSpan.appendChild(el('span', 'turnstile', '⊢'));
-  seqSpan.appendChild(chipsEl(node, 'R'));
-  goal.appendChild(seqSpan);
-
-  if (node.rule) {
-    const r = RULES[node.rule.name];
-    let label = r.label;
-    if (node.rule.detail) label += ' [' + node.rule.detail + ']';
-    if (node.children.length === 0) label += ' ✓';
-    const tag = el('span', 'ruletag ' + r.cls, label);
-    const x = el('button', '', '✕');
-    x.title = 'この手を取り消す';
-    x.addEventListener('click', () => {
-      if (state.locked || state.over) return;
-      node.rule = null;
-      node.children = [];
-      state.pending = null;
-      render();
-    });
-    tag.appendChild(x);
-    goal.appendChild(tag);
-  } else {
-    goal.addEventListener('click', () => onGoal(node, state.armed));
-    goal.addEventListener('dragover', e => { e.preventDefault(); goal.classList.add('hot'); });
-    goal.addEventListener('dragleave', () => goal.classList.remove('hot'));
-    goal.addEventListener('drop', e => {
-      e.preventDefault();
-      goal.classList.remove('hot');
-      onGoal(node, dragRule);
-    });
-  }
-  wrap.appendChild(goal);
-
-  if (node.children.length) {
-    const ch = el('div', 'children');
-    node.children.forEach(c => ch.appendChild(renderNode(c)));
-    wrap.appendChild(ch);
-  }
-  return wrap;
-}
-
-function render() {
-  const tree = $('tree');
-  tree.innerHTML = '';
-  tree.appendChild(renderNode(state.root));
-}
-
-// ===================== ボタン・キー操作 =====================
-$('btnStart').addEventListener('click', startGame);
-$('btnAgain').addEventListener('click', () => {
-  $('overlay').style.display = 'none';
-  $('game').style.display = 'none';
-  $('start').style.display = 'block';
-});
-$('btnQuit').addEventListener('click', () => { if (!state.over) endGame('終了'); });
-$('btnReset').addEventListener('click', () => { if (!state.locked && !state.over) loadCurrent(); });
-$('btnSkip').addEventListener('click', () => {
-  if (state.locked || state.over) return;
-  if (state.queue.length === 0) { toast('スキップできる他の問題がありません', 'bad'); return; }
-  state.queue.push(state.current);
-  nextTheorem();
-});
-$('btnAuto').addEventListener('click', autoOrganize);
-$('btnHint').addEventListener('click', giveHint);
-$('mdOk').addEventListener('click', submitTermInput);
-$('mdCancel').addEventListener('click', closeModal);
-$('amOk').addEventListener('click', submitAm);
-$('amCancel').addEventListener('click', closeAxModal);
-$('mdInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') submitTermInput();
-});
-document.querySelectorAll('input[name=mode]').forEach(r => {
-  r.addEventListener('change', () => {
-    const k = THEORIES[r.value].kind;
-    const long = ['nat', 'ring', 'bool'].includes(r.value);
-    $('timeSel').value = k === 'prop' ? '180' : (long ? '1200' : '600');
-  });
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeModal();
-    closeAxModal();
-    state.armed = null;
-    state.pending = null;
-    refreshArmed();
-    if (state.root) render();
-  }
-});
-
-
-
-// ===================== ランキング画面 =====================
-
-const rankingView = {
-  open: false,
-  requestId: 0,
-  returnFocus: null
-};
-
-function initRankingView() {
-  const modeSelect = $('rankingMode');
-  const limitSelect = $('rankingLimit');
-
-  modeSelect.replaceChildren();
-  limitSelect.replaceChildren();
-
-  // ゲームに定義されているモードを選択肢にする。
-  for (const [key, theory] of Object.entries(THEORIES)) {
-    const option = el('option', '', theory.name);
-    option.value = key;
-    modeSelect.appendChild(option);
-  }
-
-  // 開始画面と同じ制限時間の選択肢を使う。
-  for (const source of $('timeSel').options) {
-    limitSelect.appendChild(source.cloneNode(true));
-  }
-
-  $('btnRankingStart').addEventListener('click', () => {
-    const selectedMode = document.querySelector(
-      'input[name="mode"]:checked'
-    );
-
-    openRanking(
-      selectedMode ? selectedMode.value : 'LK',
-      Number($('timeSel').value)
-    );
-  });
-
-  $('btnRankingResult').addEventListener('click', () => {
-    // 終了したゲームの条件で開く。
-    openRanking(state.modeKey, state.limit);
-  });
-
-  $('btnRankingClose').addEventListener('click', closeRanking);
-
-  $('btnRankingReload').addEventListener(
-    'click',
-    loadRanking
-  );
-
-  modeSelect.addEventListener('change', loadRanking);
-  limitSelect.addEventListener('change', loadRanking);
-
-  // モーダルの外側をクリックすると閉じる。
-  $('rankingOverlay').addEventListener('click', event => {
-    if (event.target === $('rankingOverlay')) {
-      closeRanking();
-    }
-  });
-
-  // ランキング表示中は、既存のゲーム側のキー処理に渡さない。
-  document.addEventListener('keydown', event => {
-    if (!rankingView.open) {
-      return;
     }
 
-    event.stopImmediatePropagation();
+    // ===================== スコアパネル =====================
 
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeRanking();
-      return;
-    }
 
-    // Tabキーでフォーカスが背後の画面へ移らないようにする。
-    if (event.key === 'Tab') {
-      const focusable = Array.from(
-        $('rankingOverlay').querySelectorAll(
-          'button:not([disabled]), select:not([disabled])'
+
+    function mountScorePanel(container, result) {
+      const gameName = 'シーケント計算ゲーム';
+
+      const rankingOptions = {
+        mode: result.modeKey,
+        limit: result.limit
+      };
+
+      const panel = el('section');
+      panel.style.marginTop = '24px';
+
+      const timeLabel = result.limit === 0
+        ? '無制限（練習）'
+        : fmtTime(result.limit);
+
+      panel.appendChild(el('h3', '', 'スコア登録'));
+
+      panel.appendChild(
+        el(
+          'p',
+          'note',
+          result.modeName + ' ／ ' + timeLabel +
+          ' ／ ' + result.score + '点'
         )
       );
 
-      if (focusable.length === 0) {
+      panel.appendChild(
+        el(
+          'p',
+          'note',
+          '登録は任意です。登録した名前とスコアはランキングに公開されます。' +
+          '登録しない場合は、そのまま「もう一度」を押してください。'
+        )
+      );
+
+      const form = el('form');
+      form.id = 'scoreEntryForm';
+
+      const label = el('label', '', 'ニックネーム ');
+      const input = el('input', 'aminput');
+
+      input.type = 'text';
+      input.required = true;
+      input.maxLength = 30;
+      input.placeholder = '1〜30文字';
+      input.autocomplete = 'nickname';
+
+      label.appendChild(input);
+      form.appendChild(label);
+
+      const saveMessage = el('p', 'note');
+      saveMessage.setAttribute('role', 'status');
+
+      panel.appendChild(form);
+      panel.appendChild(saveMessage);
+      container.appendChild(panel);
+
+      const submitButton = $('btnRegisterScore');
+
+      // 前回の登録状態をリセットする。
+      submitButton.disabled = false;
+      submitButton.textContent = 'スコアを登録する';
+
+      let submitting = false;
+      let submitted = false;
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        if (submitting || submitted) {
+          return;
+        }
+
+        const playerName = input.value.trim();
+
+        if (!playerName || playerName.length > 30) {
+          saveMessage.textContent = '名前を1〜30文字で入力してください。';
+          input.focus();
+          return;
+        }
+
+        submitting = true;
+        input.disabled = true;
+        submitButton.disabled = true;
+        submitButton.textContent = '登録中…';
+
+        saveMessage.textContent = 'スコアを送信中…';
+
+        try {
+          await postScore(
+            gameName,
+            playerName,
+            result.score,
+            rankingOptions
+          );
+
+          submitted = true;
+
+          // 次の結果画面に切り替わっていたら、表示を更新しない。
+          if (!panel.isConnected) {
+            return;
+          }
+
+          submitButton.textContent = '登録済み';
+
+          saveMessage.textContent =
+            result.score + '点の記録を登録しました。';
+        } catch (error) {
+          if (!panel.isConnected) {
+            return;
+          }
+
+          saveMessage.textContent =
+            '保存完了を確認できませんでした：' + error.message +
+            '。保存済みの場合もあるため、再送すると重複登録される可能性があります。';
+
+          input.disabled = false;
+          submitButton.disabled = false;
+          submitButton.textContent = 'スコアを登録する';
+        } finally {
+          submitting = false;
+        }
+      });
+    }
+
+    function endGame(title) {
+      clearInterval(state.timer);
+      state.over = true;
+      closeModal();
+      closeAxModal();
+      // 終了時点の情報を固定する。
+      // 通信中に次のゲームを開始しても、送信内容は変わらない。
+      const result = Object.freeze({
+        modeKey: state.modeKey,
+        modeName: CUR.name,
+        limit: state.limit,
+        score: state.score
+      });
+      $('ovTitle').textContent = title || '終了';
+      const body = $('ovBody');
+      body.innerHTML = '';
+      body.appendChild(el('p', '', 'モード: ' + CUR.name));
+      body.appendChild(el('p', '', 'スコア: ' + state.score + ' 点 / 証明した定理: ' + state.solved.length + ' 個'));
+      const ul = el('ul');
+      state.solved.forEach(s => ul.appendChild(el('li', '', '⊢ ' + fmtF(s.f) + '  (+' + s.pts + ')')));
+      body.appendChild(ul);
+
+      // 名前入力・任意のスコア登録・ランキングを追加する。
+      mountScorePanel(body, result);
+
+      $('overlay').style.display = 'flex';
+    }
+
+    function backToTop() {
+      clearInterval(state.timer);
+      state.gen++;
+      state.over = true;
+      state.limit = 0;
+      state.timeLeft = 0;
+      state.score = 0;
+      state.solved = [];
+      state.armed = null;
+      state.pending = null;
+      CUR = null;
+      $('overlay').style.display = 'none';
+      $('game').style.display = 'none';
+      $('start').style.display = 'block';
+      resetHeader();
+    }
+
+    // ===================== パレット =====================
+    function buildPalette() {
+      const box = $('blocks');
+      box.innerHTML = '';
+      RULE_ORDER.filter(n => CUR.rules.includes(n)).forEach(name => {
+        const r = RULES[name];
+        const b = el('div', 'block ' + r.cls);
+        b.draggable = true;
+        b.dataset.rule = name;
+        b.appendChild(document.createTextNode(r.label));
+        b.appendChild(el('small', '', r.desc));
+        b.addEventListener('click', () => {
+          state.armed = state.armed === name ? null : name;
+          state.pending = null;
+          refreshArmed();
+          render();
+        });
+        b.addEventListener('dragstart', e => {
+          dragRule = name;
+          state.armed = name;
+          state.pending = null;
+          e.dataTransfer.setData('text/plain', name);
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+        b.addEventListener('dragend', () => { dragRule = null; });
+        box.appendChild(b);
+      });
+    }
+    function refreshArmed() {
+      document.querySelectorAll('#blocks .block').forEach(b => {
+        b.classList.toggle('armed', b.dataset.rule === state.armed);
+      });
+      document.querySelectorAll('#lib .libitem').forEach(b => {
+        b.classList.toggle('armed', b.dataset.arm === state.armed);
+      });
+    }
+
+    // ===================== ルール適用 =====================
+    function applyRule(node, name, side, idx, opts = {}) {
+      if (state.locked || state.over || node.rule) return false;
+      const res = premises(node.seq, name, side, idx, opts);
+      if (res.err) { toast(res.err, 'bad'); return false; }
+      node.rule = { name, side, idx, detail: opts.detail || '' };
+      node.children = res.map(s => ({ seq: s, rule: null, children: [] }));
+      state.armed = null;
+      state.pending = null;
+      refreshArmed();
+      render();
+      checkSolved();
+      return true;
+    }
+
+    function candidates(node, name) {
+      const r = RULES[name];
+      const out = [];
+      if (r.side === 'L' || r.side === 'R') {
+        const arr = r.side === 'R' ? node.seq.R : node.seq.L;
+        arr.forEach((f, i) => { if (!r.conn || f.t === r.conn) out.push(i); });
+      }
+      return out;
+    }
+
+    function onGoal(node, name) {
+      if (state.locked || state.over || node.rule) return;
+      name = name || state.armed;
+      if (!name) { toast('先にルールブロックを選んでください', 'bad'); return; }
+      if (name.startsWith('ax:')) {
+        const en = findEntry(name.slice(3));
+        if (en) openAxModal(node, en);
+        return;
+      }
+      const r = RULES[name];
+      if (!r.side) { applyRule(node, name, null, 0); return; }
+      if (r.side === 'rw') { toast('等式と書き換え対象の式（チップ）を順にクリックしてください', 'bad'); return; }
+      const c = candidates(node, name);
+      if (c.length === 0) { toast(r.label + ' を適用できる式がありません', 'bad'); return; }
+      if (c.length > 1) { toast('適用する式（チップ）を選んでください', 'bad'); return; }
+      onChip(node, r.side, c[0], name);
+    }
+
+    function onChip(node, side, i, name) {
+      if (state.locked || state.over || node.rule) return;
+      name = name || state.armed;
+      if (!name) { toast('先にルールブロックを選んでください', 'bad'); return; }
+      if (name.startsWith('ax:')) {
+        const en = findEntry(name.slice(3));
+        if (en) openAxModal(node, en);
+        return;
+      }
+      const r = RULES[name];
+      if (!r.side) { applyRule(node, name, null, 0); return; }
+      if (r.side === 'rw') { rwFlow(node, side, i, name); return; }
+      if (side !== r.side) {
+        toast(r.label + ' は' + (r.side === 'R' ? '右辺' : '左辺') + 'の式に適用します', 'bad');
+        return;
+      }
+      const f = (side === 'L' ? node.seq.L : node.seq.R)[i];
+      if (r.conn && f.t !== r.conn) { toast(r.label + ': 対応する式を選んでください', 'bad'); return; }
+      if (name === 'allR' || name === 'exL') {
+        const y = freshName(node.seq, f.v);
+        applyRule(node, name, side, i, { y, detail: f.v + ' := ' + y });
+        return;
+      }
+      if (name === 'allL' || name === 'exR') {
+        openTermModal(node, name, side, i);
+        return;
+      }
+      applyRule(node, name, side, i);
+    }
+
+    function rwFlow(node, side, i, name) {
+      const p = state.pending;
+      const f = (side === 'L' ? node.seq.L : node.seq.R)[i];
+      if (!p || p.node !== node || p.name !== name) {
+        if (side !== 'L' || f.t !== 'atom' || f.p !== '=') {
+          toast('先に左辺の等式（s = t）を選んでください', 'bad');
+          return;
+        }
+        state.pending = { node, name, eq: i };
+        toast('書き換えたい式をクリックしてください');
+        render();
+        return;
+      }
+      if (side === 'L' && i === p.eq) {
+        state.pending = null;
+        toast('等式の選択を解除しました');
+        render();
+        return;
+      }
+      const [s, t] = node.seq.L[p.eq].args;
+      const detail = name === 'rwF' ? fmtT(s) + ' ⇒ ' + fmtT(t) : fmtT(t) + ' ⇒ ' + fmtT(s);
+      const eq = p.eq;
+      applyRule(node, name, side, i, { eq, detail });
+    }
+
+    // ===================== 項の代入ダイアログ（∀L / ∃R） =====================
+    // 候補: 原子項 → 1引数の関数 → 2引数の関数・中置演算子（すべての演算子について）
+    function suggestTerms(seq) {
+      const vars = [...fvSeq(seq)].sort();
+      const fresh = freshName(seq, 'a');
+      const atoms = [...SIG.consts.map(c => Fn(c)), ...vars.map(V), V(fresh)];
+      const out = [...atoms];
+      const funcs = Object.entries(SIG.funcs);
+      const unary = funcs.filter(([, ar]) => ar === 1).map(([n]) => n);
+      const binary = [
+        ...(SIG.ops || []).map(o => o.sym),
+        ...funcs.filter(([, ar]) => ar === 2).map(([n]) => n)
+      ];
+      unary.forEach(n => atoms.forEach(a => out.push(Fn(n, [a]))));
+      binary.forEach(n => atoms.forEach(a => atoms.forEach(b => out.push(Fn(n, [a, b])))));
+      const seen = new Set();
+      const uniq = [];
+      out.forEach(t => {
+        const k = fmtT(t);
+        if (!seen.has(k)) { seen.add(k); uniq.push(t); }
+      });
+      return { list: uniq.slice(0, 80), fresh };
+    }
+
+    function openTermModal(node, name, side, idx) {
+      const f = (side === 'L' ? node.seq.L : node.seq.R)[idx];
+      modal.node = node; modal.name = name; modal.side = side; modal.idx = idx;
+      $('mdTitle').textContent = RULES[name].label + ': ' + f.v + ' に代入する項を選ぶ';
+      $('mdFormula').textContent = (side === 'L' ? '左辺: ' : '右辺: ') + fmtF(f);
+      const box = $('mdSug');
+      box.innerHTML = '';
+      const { list, fresh } = suggestTerms(node.seq);
+      list.forEach(t => {
+        const b = el('button', fmtT(t) === fresh ? 'fresh' : '', fmtT(t));
+        if (fmtT(t) === fresh) b.title = '新しい変数（領域は空でないので自由に使えます）';
+        b.addEventListener('click', () => finishTerm(t));
+        box.appendChild(b);
+      });
+      $('mdInput').value = '';
+      $('modal').style.display = 'flex';
+      setTimeout(() => $('mdInput').focus(), 0);
+    }
+    function closeModal() { $('modal').style.display = 'none'; }
+    function submitTermInput() {
+      const s = $('mdInput').value.trim();
+      if (!s) { toast('項を入力するか候補を選んでください', 'bad'); return; }
+      let t;
+      try { t = parseTermStr(s, SIG); }
+      catch (e) { toast('項の構文エラー: ' + e.message, 'bad'); return; }
+      finishTerm(t);
+    }
+    function finishTerm(t) {
+      const { node, name, side, idx } = modal;
+      const f = (side === 'L' ? node.seq.L : node.seq.R)[idx];
+      closeModal();
+      applyRule(node, name, side, idx, { term: t, detail: f.v + ' := ' + fmtT(t) });
+    }
+
+    // ===================== 公理・補題の導入ダイアログ =====================
+    // params の type: 'term'（項）, 'formula'（論理式）, 'var'（変数名）
+    function readAmVals() {
+      return am.entry.params.map((p, i) => {
+        const s = am.inputs[i].value.trim();
+        if (!s) return null;
+        if (p.type === 'formula') return parseFormula(s, SIG);
+        const t = parseTermStr(s, SIG);
+        if (p.type === 'var' && t.k !== 'var') {
+          throw new Error('変数名を入力してください（' + s + ' は変数ではありません）');
+        }
+        return t;
+      });
+    }
+
+    function updateAmPreview() {
+      const pv = $('amPreview');
+      try {
+        const inst = am.entry.build(readAmVals());
+        pv.textContent = fmtF(inst);
+        pv.className = '';
+      } catch (e) {
+        pv.textContent = 'エラー: ' + e.message;
+        pv.className = 'err';
+      }
+    }
+
+    function openAxModal(node, entry) {
+      if (entry.params.length === 0) {
+        applyRule(node, 'ax', null, 0, { inst: entry.build([]), detail: entry.name });
+        return;
+      }
+      am.node = node; am.entry = entry; am.inputs = []; am.last = null;
+      $('amTitle').textContent = '【' + KIND_LABEL[entry.kind] + '】' + entry.name + ' を左辺に追加';
+      $('amFormula').textContent = entry.display || fmtF(entry.f);
+      const box = $('amFields');
+      box.innerHTML = '';
+      entry.params.forEach(p => {
+        const row = el('div', 'amrow');
+        row.appendChild(el('label', '', p.name + (p.type === 'var' ? ' =' : ' :=')));
+        const inp = document.createElement('input');
+        inp.className = 'aminput';
+        inp.placeholder = p.hint;
+        inp.autocomplete = 'off';
+        inp.addEventListener('input', updateAmPreview);
+        inp.addEventListener('focus', () => { am.last = inp; });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') submitAm(); });
+        row.appendChild(inp);
+        box.appendChild(row);
+        am.inputs.push(inp);
+      });
+      const sug = $('amSug');
+      sug.innerHTML = '';
+      if (entry.params.some(p => p.type === 'term')) {
+        suggestTerms(node.seq).list.slice(0, 24).forEach(t => {
+          const b = el('button', '', fmtT(t));
+          b.addEventListener('click', () => {
+            const target = am.last || am.inputs.find(i => !i.value) || am.inputs[0];
+            target.value = fmtT(t);
+            target.focus();
+            updateAmPreview();
+          });
+          sug.appendChild(b);
+        });
+      }
+      updateAmPreview();
+      $('axmodal').style.display = 'flex';
+      setTimeout(() => am.inputs[0].focus(), 0);
+    }
+    function closeAxModal() { $('axmodal').style.display = 'none'; }
+
+    function submitAm() {
+      let inst, vals;
+      try {
+        vals = readAmVals();
+        inst = am.entry.build(vals);
+      } catch (e) {
+        toast('入力エラー: ' + e.message, 'bad');
+        return;
+      }
+      const parts = [];
+      am.entry.params.forEach((p, i) => {
+        if (vals[i]) parts.push(p.name + (p.type === 'var' ? ' = ' : ' := ') + am.inputs[i].value.trim());
+      });
+      const { node, entry } = am;
+      closeAxModal();
+      applyRule(node, 'ax', null, 0, {
+        inst,
+        detail: entry.name + (parts.length ? ' (' + parts.join(', ') + ')' : '')
+      });
+    }
+
+    // ===================== 完了判定・自動整理・ヒント =====================
+    function isComplete(n) {
+      return !!n.rule && n.children.every(isComplete);
+    }
+
+    function checkSolved() {
+      if (!isComplete(state.root)) return;
+      const gen = state.gen;
+      const pts = Math.max(1, state.current.pts - state.penalty);
+      state.score += pts;
+      state.solved.push({ f: state.current.f, pts });
+      state.locked = true;
+      addLemma(state.current);
+      updateStats();
+      toast('証明完了！ +' + pts + '点（補題としてライブラリに追加）', 'good');
+      setTimeout(() => { if (gen === state.gen && !state.over) nextTheorem(); }, 1500);
+    }
+
+    function autoStepNode(node) {
+      if (node.rule) {
+        let progressed = false;
+        for (const c of node.children) if (autoStepNode(c)) progressed = true;
+        return progressed;
+      }
+      const { L, R } = node.seq;
+      const tryApply = (name, side, idx, opts) => {
+        const res = premises(node.seq, name, side, idx, opts || {});
+        if (res.err) return false;
+        node.rule = { name, side, idx, detail: (opts && opts.detail) || '' };
+        node.children = res.map(s => ({ seq: s, rule: null, children: [] }));
+        return true;
+      };
+      if (tryApply('id', null, 0) || tryApply('botL', null, 0) || tryApply('refl', null, 0)) return true;
+      for (let i = 0; i < L.length; i++) {
+        if (L[i].t === 'and' && tryApply('andL', 'L', i)) return true;
+      }
+      for (let i = 0; i < L.length; i++) {
+        if (L[i].t === 'ex') {
+          const y = freshName(node.seq, L[i].v);
+          if (tryApply('exL', 'L', i, { y, detail: L[i].v + ' := ' + y })) return true;
+        }
+      }
+      for (let i = 0; i < R.length; i++) {
+        if (R[i].t === 'or' && tryApply('orR', 'R', i)) return true;
+      }
+      for (let i = 0; i < R.length; i++) {
+        if (R[i].t === 'imp' && tryApply('impR', 'R', i)) return true;
+      }
+      for (let i = 0; i < R.length; i++) {
+        if (R[i].t === 'all') {
+          const y = freshName(node.seq, R[i].v);
+          if (tryApply('allR', 'R', i, { y, detail: R[i].v + ' := ' + y })) return true;
+        }
+      }
+      for (let i = 0; i < R.length; i++) {
+        if (R[i].t === 'and' && tryApply('andR', 'R', i)) return true;
+      }
+      for (let i = 0; i < L.length; i++) {
+        if (L[i].t === 'or' && tryApply('orL', 'L', i)) return true;
+      }
+      // →L が可逆なのは古典論理のみ
+      if (LOGIC === 'LK') {
+        for (let i = 0; i < L.length; i++) {
+          if (L[i].t === 'imp' && tryApply('impL', 'L', i)) return true;
+        }
+      }
+      return false;
+    }
+
+    // 自動整理は1階述語論理モードのみ
+    function autoOrganize() {
+      if (state.locked || state.over || CUR.kind === 'prop') return;
+      let any = false, guard = 0;
+      while (guard++ < 400 && autoStepNode(state.root)) any = true;
+      if (!any) {
+        toast('自動で進められる手はありません。公理の導入・代入・書き換えを考えましょう', 'bad');
+        return;
+      }
+      state.penalty += 3;
+      state.armed = null;
+      state.pending = null;
+      refreshArmed();
+      toast('自動整理しました (-3点)');
+      render();
+      checkSolved();
+    }
+
+    function firstOpen(n) {
+      if (!n.rule) return n;
+      for (const c of n.children) {
+        const o = firstOpen(c);
+        if (o) return o;
+      }
+      return null;
+    }
+
+    function giveHint() {
+      if (state.locked || state.over || CUR.kind !== 'prop') return;
+      const open = firstOpen(state.root);
+      if (!open) return;
+      const p = prove(open.seq);
+      if (!p) {
+        toast('このゴールは（補題なしでは）証明できません。前の手を取り消してください', 'bad');
+        return;
+      }
+      state.penalty += 5;
+      const { name, idx } = p.rule;
+      const side = RULES[name].side;
+      const res = premises(open.seq, name, side, idx);
+      open.rule = { name, side, idx, detail: '' };
+      open.children = res.map(s => ({ seq: s, rule: null, children: [] }));
+      state.armed = null;
+      state.pending = null;
+      refreshArmed();
+      toast('ヒント: ' + RULES[name].label + ' を適用しました (-5点)');
+      render();
+      checkSolved();
+    }
+
+    // ===================== 描画 =====================
+    function chipClasses(node, side, i, f) {
+      const out = [];
+      const name = state.armed;
+      if (!name || node.rule || name.startsWith('ax:')) return out;
+      const r = RULES[name];
+      if (r.side === 'rw') {
+        const p = state.pending;
+        if (p && p.node === node && p.name === name) {
+          out.push(side === 'L' && i === p.eq ? 'sel' : 'cand');
+        } else if (side === 'L' && f.t === 'atom' && f.p === '=') {
+          out.push('cand');
+        }
+      } else if (r.side && r.side === side && (!r.conn || r.conn === f.t)) {
+        out.push('cand');
+      }
+      return out;
+    }
+
+    function chipsEl(node, side) {
+      const frag = document.createDocumentFragment();
+      const arr = side === 'L' ? node.seq.L : node.seq.R;
+      arr.forEach((f, i) => {
+        const chip = el('span', 'chip', fmtF(f));
+        if (!node.rule) {
+          chipClasses(node, side, i, f).forEach(c => chip.classList.add(c));
+          chip.addEventListener('click', e => {
+            e.stopPropagation();
+            onChip(node, side, i);
+          });
+          chip.addEventListener('dragover', e => { e.preventDefault(); chip.classList.add('over'); });
+          chip.addEventListener('dragleave', () => chip.classList.remove('over'));
+          chip.addEventListener('drop', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            chip.classList.remove('over');
+            onChip(node, side, i, dragRule);
+          });
+        }
+        frag.appendChild(chip);
+        if (i < arr.length - 1) frag.appendChild(document.createTextNode(','));
+      });
+      return frag;
+    }
+
+    function renderNode(node) {
+      const wrap = el('div', 'node');
+      const goal = el('div', 'goal ' + (node.rule ? 'done' : 'open'));
+
+      const seqSpan = el('span', 'seq');
+      seqSpan.appendChild(chipsEl(node, 'L'));
+      seqSpan.appendChild(el('span', 'turnstile', '⊢'));
+      seqSpan.appendChild(chipsEl(node, 'R'));
+      goal.appendChild(seqSpan);
+
+      if (node.rule) {
+        const r = RULES[node.rule.name];
+        let label = r.label;
+        if (node.rule.detail) label += ' [' + node.rule.detail + ']';
+        if (node.children.length === 0) label += ' ✓';
+        const tag = el('span', 'ruletag ' + r.cls, label);
+        const x = el('button', '', '✕');
+        x.title = 'この手を取り消す';
+        x.addEventListener('click', () => {
+          if (state.locked || state.over) return;
+          node.rule = null;
+          node.children = [];
+          state.pending = null;
+          render();
+        });
+        tag.appendChild(x);
+        goal.appendChild(tag);
+      } else {
+        goal.addEventListener('click', () => onGoal(node, state.armed));
+        goal.addEventListener('dragover', e => { e.preventDefault(); goal.classList.add('hot'); });
+        goal.addEventListener('dragleave', () => goal.classList.remove('hot'));
+        goal.addEventListener('drop', e => {
+          e.preventDefault();
+          goal.classList.remove('hot');
+          onGoal(node, dragRule);
+        });
+      }
+      wrap.appendChild(goal);
+
+      if (node.children.length) {
+        const ch = el('div', 'children');
+        node.children.forEach(c => ch.appendChild(renderNode(c)));
+        wrap.appendChild(ch);
+      }
+      return wrap;
+    }
+
+    function render() {
+      const tree = $('tree');
+      tree.innerHTML = '';
+      tree.appendChild(renderNode(state.root));
+    }
+
+    // ===================== ボタン・キー操作 =====================
+    $('btnStart').addEventListener('click', startGame);
+    $('btnAgain').addEventListener('click', backToTop);
+    $('btnQuit').addEventListener('click', () => { if (!state.over) endGame('終了'); });
+    $('btnReset').addEventListener('click', () => { if (!state.locked && !state.over) loadCurrent(); });
+    $('btnSkip').addEventListener('click', () => {
+      if (state.locked || state.over) return;
+      if (state.queue.length === 0) { toast('スキップできる他の問題がありません', 'bad'); return; }
+      state.queue.push(state.current);
+      nextTheorem();
+    });
+    $('btnAuto').addEventListener('click', autoOrganize);
+    $('btnHint').addEventListener('click', giveHint);
+    $('mdOk').addEventListener('click', submitTermInput);
+    $('mdCancel').addEventListener('click', closeModal);
+    $('amOk').addEventListener('click', submitAm);
+    $('amCancel').addEventListener('click', closeAxModal);
+    $('mdInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitTermInput();
+    });
+    document.querySelectorAll('input[name=mode]').forEach(r => {
+      r.addEventListener('change', () => {
+        const k = THEORIES[r.value].kind;
+        const long = ['nat', 'ring'].includes(r.value);
+        $('timeSel').value = k === 'prop' ? '300' : (long ? '900' : '900');
+      });
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeModal();
+        closeAxModal();
+        state.armed = null;
+        state.pending = null;
+        refreshArmed();
+        if (state.root) render();
+      }
+    });
+
+
+    // ===================== ランキング画面 =====================
+
+    const rankingView = {
+      open: false,
+      requestId: 0,
+      returnFocus: null
+    };
+
+    function initRankingView() {
+      const modeSelect = $('rankingMode');
+      const limitSelect = $('rankingLimit');
+
+      modeSelect.replaceChildren();
+      limitSelect.replaceChildren();
+
+      // ゲームに定義されているモードを選択肢にする。
+      for (const [key, theory] of Object.entries(THEORIES)) {
+        const option = el('option', '', theory.name);
+        option.value = key;
+        modeSelect.appendChild(option);
+      }
+
+      // 開始画面と同じ制限時間の選択肢を使う。
+      for (const source of $('timeSel').options) {
+        limitSelect.appendChild(source.cloneNode(true));
+      }
+
+      $('btnRankingStart').addEventListener('click', () => {
+        const selectedMode = document.querySelector(
+          'input[name="mode"]:checked'
+        );
+
+        openRanking(
+          selectedMode ? selectedMode.value : 'LK',
+          Number($('timeSel').value)
+        );
+      });
+
+      $('btnRankingResult').addEventListener('click', () => {
+        // 終了したゲームの条件で開く。
+        openRanking(state.modeKey, state.limit);
+      });
+
+      $('btnRankingClose').addEventListener('click', closeRanking);
+
+      $('btnRankingReload').addEventListener(
+        'click',
+        loadRanking
+      );
+
+      modeSelect.addEventListener('change', loadRanking);
+      limitSelect.addEventListener('change', loadRanking);
+
+      // モーダルの外側をクリックすると閉じる。
+      $('rankingOverlay').addEventListener('click', event => {
+        if (event.target === $('rankingOverlay')) {
+          closeRanking();
+        }
+      });
+
+      // ランキング表示中は、既存のゲーム側のキー処理に渡さない。
+      document.addEventListener('keydown', event => {
+        if (!rankingView.open) {
+          return;
+        }
+
+        event.stopImmediatePropagation();
+
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeRanking();
+          return;
+        }
+
+        // Tabキーでフォーカスが背後の画面へ移らないようにする。
+        if (event.key === 'Tab') {
+          const focusable = Array.from(
+            $('rankingOverlay').querySelectorAll(
+              'button:not([disabled]), select:not([disabled])'
+            )
+          );
+
+          if (focusable.length === 0) {
+            return;
+          }
+
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          const active = document.activeElement;
+
+          if (!focusable.includes(active)) {
+            event.preventDefault();
+            first.focus();
+          } else if (event.shiftKey && active === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && active === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      }, true);
+    }
+
+    function openRanking(modeKey, limit) {
+      const modeSelect = $('rankingMode');
+      const limitSelect = $('rankingLimit');
+
+      if (!rankingView.open) {
+        rankingView.returnFocus = document.activeElement;
+      }
+
+      modeSelect.value = Object.prototype.hasOwnProperty.call(
+        THEORIES,
+        modeKey
+      )
+        ? modeKey
+        : 'LK';
+
+      const limitValue = String(limit);
+
+      const validLimit = Array.from(limitSelect.options).some(
+        option => option.value === limitValue
+      );
+
+      limitSelect.value = validLimit ? limitValue : '180';
+
+      rankingView.open = true;
+      $('rankingOverlay').style.display = 'flex';
+
+      $('btnRankingClose').focus();
+
+      loadRanking();
+    }
+
+    function closeRanking() {
+      if (!rankingView.open) {
         return;
       }
 
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
+      rankingView.open = false;
 
-      if (!focusable.includes(active)) {
-        event.preventDefault();
-        first.focus();
-      } else if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
+      // 閉じる前に開始した通信結果は、以後の表示に反映しない。
+      rankingView.requestId++;
+
+      $('rankingOverlay').style.display = 'none';
+
+      const returnFocus = rankingView.returnFocus;
+      rankingView.returnFocus = null;
+
+      if (returnFocus && returnFocus.isConnected) {
+        returnFocus.focus();
       }
     }
-  }, true);
-}
 
-function openRanking(modeKey, limit) {
-  const modeSelect = $('rankingMode');
-  const limitSelect = $('rankingLimit');
-
-  if (!rankingView.open) {
-    rankingView.returnFocus = document.activeElement;
-  }
-
-  modeSelect.value = Object.prototype.hasOwnProperty.call(
-    THEORIES,
-    modeKey
-  )
-    ? modeKey
-    : 'LK';
-
-  const limitValue = String(limit);
-
-  const validLimit = Array.from(limitSelect.options).some(
-    option => option.value === limitValue
-  );
-
-  limitSelect.value = validLimit ? limitValue : '180';
-
-  rankingView.open = true;
-  $('rankingOverlay').style.display = 'flex';
-
-  $('btnRankingClose').focus();
-
-  loadRanking();
-}
-
-function closeRanking() {
-  if (!rankingView.open) {
-    return;
-  }
-
-  rankingView.open = false;
-
-  // 閉じる前に開始した通信結果は、以後の表示に反映しない。
-  rankingView.requestId++;
-
-  $('rankingOverlay').style.display = 'none';
-
-  const returnFocus = rankingView.returnFocus;
-  rankingView.returnFocus = null;
-
-  if (returnFocus && returnFocus.isConnected) {
-    returnFocus.focus();
-  }
-}
-
-async function loadRanking() {
-  if (!rankingView.open) {
-    return;
-  }
-
-  const modeKey = $('rankingMode').value;
-  const limit = Number($('rankingLimit').value);
-
-  const requestId = ++rankingView.requestId;
-
-  const status = $('rankingStatus');
-  const table = $('rankingTable');
-  const rowsElement = $('rankingRows');
-  const reloadButton = $('btnRankingReload');
-
-  const timeLabel = limit === 0
-    ? '無制限（練習ランキング）'
-    : (limit / 60) + '分';
-
-  $('rankingCondition').textContent =
-    THEORIES[modeKey].name + ' ／ ' + timeLabel;
-
-  rowsElement.replaceChildren();
-  table.hidden = true;
-  reloadButton.disabled = true;
-  status.textContent = '';
-
-  $('rankingLoading').hidden = false;
-
-  try {
-    const scores = await fetchScores(
-      'シーケント計算ゲーム',
-      {
-        mode: modeKey,
-        limit: limit
-      }
-    );
-
-    // 条件変更や閉じる操作の後に届いた古い結果は無視する。
-    if (
-      !rankingView.open ||
-      requestId !== rankingView.requestId
-    ) {
-      return;
-    }
-
-    const rows = scores
-      .map(row => ({
-        name: String(row.name ?? '名無し'),
-        score: Number(row.score)
-      }))
-      .filter(row => Number.isFinite(row.score))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
-
-    if (rows.length === 0) {
-      status.textContent =
-        'このモード・制限時間には、まだ登録がありません。';
-      return;
-    }
-
-    let rank = 0;
-    let previousScore = null;
-
-    rows.forEach((row, index) => {
-      if (index === 0 || row.score !== previousScore) {
-        rank = index + 1;
+    async function loadRanking() {
+      if (!rankingView.open) {
+        return;
       }
 
-      previousScore = row.score;
+      const modeKey = $('rankingMode').value;
+      const limit = Number($('rankingLimit').value);
 
-      const tr = el('tr');
+      const requestId = ++rankingView.requestId;
 
-      const rankCell = el('td', '', rank + '位');
-      const nameCell = el('td', '', row.name);
-      const scoreCell = el('td', '', row.score + '点');
+      const status = $('rankingStatus');
+      const table = $('rankingTable');
+      const rowsElement = $('rankingRows');
+      const reloadButton = $('btnRankingReload');
 
-      for (const cell of [rankCell, nameCell, scoreCell]) {
-        cell.style.padding = '8px';
-        cell.style.borderBottom = '1px solid #3b4666';
+      const timeLabel = limit === 0
+        ? '無制限（練習ランキング）'
+        : (limit / 60) + '分';
+
+      $('rankingCondition').textContent =
+        THEORIES[modeKey].name + ' ／ ' + timeLabel;
+
+      rowsElement.replaceChildren();
+      table.hidden = true;
+      reloadButton.disabled = true;
+      status.textContent = '';
+
+      $('rankingLoading').hidden = false;
+
+      try {
+        const scores = await fetchScores(
+          'シーケント計算ゲーム',
+          {
+            mode: modeKey,
+            limit: limit
+          }
+        );
+
+        // 条件変更や閉じる操作の後に届いた古い結果は無視する。
+        if (
+          !rankingView.open ||
+          requestId !== rankingView.requestId
+        ) {
+          return;
+        }
+
+        const rows = scores
+          .map(row => ({
+            name: String(row.name ?? '名無し'),
+            score: Number(row.score)
+          }))
+          .filter(row => Number.isFinite(row.score))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10);
+
+        if (rows.length === 0) {
+          status.textContent =
+            'このモード・制限時間には、まだ登録がありません。';
+          return;
+        }
+
+        let rank = 0;
+        let previousScore = null;
+
+        rows.forEach((row, index) => {
+          if (index === 0 || row.score !== previousScore) {
+            rank = index + 1;
+          }
+
+          previousScore = row.score;
+
+          const tr = el('tr');
+
+          const rankCell = el('td', '', rank + '位');
+          const nameCell = el('td', '', row.name);
+          const scoreCell = el('td', '', row.score + '点');
+
+          for (const cell of [rankCell, nameCell, scoreCell]) {
+            cell.style.padding = '8px';
+            cell.style.borderBottom = '1px solid #3b4666';
+          }
+
+          rankCell.style.whiteSpace = 'nowrap';
+          nameCell.style.overflowWrap = 'anywhere';
+          scoreCell.style.textAlign = 'right';
+          scoreCell.style.whiteSpace = 'nowrap';
+
+          tr.appendChild(rankCell);
+          tr.appendChild(nameCell);
+          tr.appendChild(scoreCell);
+
+          rowsElement.appendChild(tr);
+        });
+
+        table.hidden = false;
+
+        status.textContent =
+          '上位' + rows.length + '件の記録を表示しています。';
+      } catch (error) {
+        if (
+          !rankingView.open ||
+          requestId !== rankingView.requestId
+        ) {
+          return;
+        }
+
+        status.textContent =
+          'ランキングを取得できませんでした：' +
+          error.message +
+          '。「更新」を押して再試行してください。';
+      } finally {
+        if (
+          rankingView.open &&
+          requestId === rankingView.requestId
+        ) {
+          $('rankingLoading').hidden = true;
+          reloadButton.disabled = false;
+        }
       }
-
-      rankCell.style.whiteSpace = 'nowrap';
-      nameCell.style.overflowWrap = 'anywhere';
-      scoreCell.style.textAlign = 'right';
-      scoreCell.style.whiteSpace = 'nowrap';
-
-      tr.appendChild(rankCell);
-      tr.appendChild(nameCell);
-      tr.appendChild(scoreCell);
-
-      rowsElement.appendChild(tr);
-    });
-
-    table.hidden = false;
-
-    status.textContent =
-      '上位' + rows.length + '件の記録を表示しています。';
-  } catch (error) {
-    if (
-      !rankingView.open ||
-      requestId !== rankingView.requestId
-    ) {
-      return;
     }
 
-    status.textContent =
-      'ランキングを取得できませんでした：' +
-      error.message +
-      '。「更新」を押して再試行してください。';
-  } finally {
-    if (
-      rankingView.open &&
-      requestId === rankingView.requestId
-    ) {
-      $('rankingLoading').hidden = true;
-      reloadButton.disabled = false;
-    }
-  }
-}
-
-// このコードは、上記HTML要素と既存のゲーム定義より後で実行する。
-initRankingView();
-</script>
+    // このコードは、上記HTML要素と既存のゲーム定義より後で実行する。
+    initRankingView();
+  </script>
 </body>
+
 </html>
