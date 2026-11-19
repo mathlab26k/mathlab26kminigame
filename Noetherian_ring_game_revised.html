@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noether環ゲーム(極大イデアルを作ったら負け)</title>
+<script>
+/* スタイルはJSから注入します(外部のサニタイズで <style> が除去されても効くようにするため) */
+(function () {
+  var css = `
+:root {
+  --bg1: #eef2ff; --bg2: #f8fafc; --ink: #1e293b; --muted: #64748b;
+  --primary: #4f46e5; --primary-dark: #4338ca; --accent: #7c3aed;
+  --card: #ffffff; --line: #e2e8f0;
+  --you: #059669; --you-bg: #ecfdf5;
+  --cpu: #d97706; --cpu-bg: #fffbeb;
+  --bad: #dc2626; --bad-bg: #fef2f2;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
+  color: var(--ink); line-height: 1.65;
+  background: linear-gradient(135deg, var(--bg1), var(--bg2)) fixed;
+  min-height: 100vh;
+}
+.hero {
+  background: linear-gradient(120deg, #4f46e5, #7c3aed 60%, #db2777);
+  color: #fff; padding: 34px 20px 54px; text-align: center;
+}
+.hero h1 { margin: 0 0 6px; font-size: 2rem; letter-spacing: .04em; }
+.hero p { margin: 0; opacity: .9; font-size: .98rem; }
+.hero .sym { font-size: 2.6rem; display: block; margin-bottom: 4px; }
+.wrap { max-width: 920px; margin: -34px auto 40px; padding: 0 16px; }
+.card {
+  background: var(--card); border-radius: 18px; padding: 20px 22px; margin-bottom: 18px;
+  box-shadow: 0 8px 28px rgba(79, 70, 229, .10), 0 1px 3px rgba(15, 23, 42, .08);
+  border: 1px solid var(--line);
+}
+.card h2 { margin: 0 0 12px; font-size: 1.05rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px; }
+.card h2::before { content: ""; width: 6px; height: 1.1em; border-radius: 3px; background: linear-gradient(var(--primary), var(--accent)); }
+.rules ol { margin: 0; padding-left: 1.3em; }
+.rules li { margin: 3px 0; }
+.rules b { color: var(--bad); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
+@media (max-width: 680px) { .grid { grid-template-columns: 1fr; } .hero h1 { font-size: 1.5rem; } }
+.field label.t { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+select, input[type=text] {
+  width: 100%; font: inherit; padding: 9px 12px; border-radius: 10px;
+  border: 1.5px solid var(--line); background: #f8fafc; color: var(--ink); outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+select:focus, input[type=text]:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(79, 70, 229, .15); }
+.inline { display: flex; gap: 10px; }
+.seg { display: flex; gap: 8px; }
+.seg label {
+  flex: 1; text-align: center; padding: 9px 10px; border-radius: 10px; cursor: pointer;
+  border: 1.5px solid var(--line); background: #f8fafc; font-weight: 600; font-size: .92rem;
+  transition: all .15s;
+}
+.seg label:hover { border-color: var(--primary); }
+.seg input { display: none; }
+.seg label:has(input:checked) { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(79, 70, 229, .3); }
+button {
+  font: inherit; font-weight: 700; cursor: pointer; border-radius: 12px; padding: 10px 20px; border: 0;
+  transition: transform .1s, box-shadow .15s, background .15s, opacity .15s;
+}
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary { color: #fff; background: linear-gradient(120deg, var(--primary), var(--accent)); box-shadow: 0 6px 16px rgba(79, 70, 229, .35); }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 8px 22px rgba(79, 70, 229, .5); }
+.btn-ghost { background: #eef2ff; color: var(--primary-dark); }
+.btn-ghost:hover:not(:disabled) { background: #e0e7ff; }
+.start-row { margin-top: 16px; display: flex; justify-content: flex-end; }
+.board-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.pill { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: .82rem; font-weight: 700; }
+.pill.ring { background: #eef2ff; color: var(--primary-dark); font-family: ui-monospace, Menlo, Consolas, monospace; }
+.pill.turn-you { background: var(--you-bg); color: var(--you); box-shadow: 0 0 0 2px var(--you) inset; }
+.pill.turn-cpu { background: var(--cpu-bg); color: var(--cpu); box-shadow: 0 0 0 2px var(--cpu) inset; }
+.pill.turn-end { background: #f1f5f9; color: var(--muted); }
+.pill.tag { background: #fecaca; color: #991b1b; margin-left: 10px; vertical-align: middle; }
+.ideal {
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.25rem; font-weight: 600;
+  background: linear-gradient(135deg, #1e1b4b, #312e81); color: #e0e7ff;
+  border-radius: 14px; padding: 16px 20px; overflow-x: auto; word-break: break-all;
+}
+.ideal small { display: block; color: #a5b4fc; font-size: .75rem; font-weight: 400; margin-bottom: 4px; letter-spacing: .08em; }
+.note { color: var(--muted); font-size: .82rem; margin-top: 8px; white-space: pre-wrap; }
+.banner { display: none; margin-top: 14px; padding: 14px 18px; border-radius: 14px; font-weight: 800; font-size: 1.1rem; text-align: center; }
+.banner.win { display: block; background: linear-gradient(120deg, #34d399, #059669); color: #fff; }
+.banner.lose { display: block; background: linear-gradient(120deg, #f87171, #dc2626); color: #fff; }
+.moverow { display: flex; gap: 10px; align-items: stretch; margin-top: 16px; flex-wrap: wrap; }
+.moverow .xin { flex: 1 1 260px; position: relative; }
+.moverow .xin span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-family: ui-monospace, monospace; font-weight: 700; color: var(--primary); }
+.moverow input[type=text] { padding-left: 42px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.05rem; height: 100%; }
+#log { max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+#log .m { padding: 8px 14px; border-radius: 12px; font-size: .95rem; border-left: 5px solid #94a3b8; background: #f1f5f9; color: #334155; }
+#log .you { border-left-color: var(--you); background: var(--you-bg); color: #065f46; align-self: flex-start; }
+#log .cpu { border-left-color: var(--cpu); background: var(--cpu-bg); color: #92400e; align-self: flex-end; text-align: right; border-left: 0; border-right: 5px solid var(--cpu); }
+#log .end { border-left-color: var(--bad); background: var(--bad-bg); color: var(--bad); font-weight: 700; }
+#log .empty { color: var(--muted); font-size: .9rem; text-align: center; padding: 14px; }
+details.card summary { cursor: pointer; font-weight: 700; color: var(--primary-dark); }
+details.card ul { margin: 10px 0 0; padding-left: 1.3em; }
+code { background: #eef2ff; color: var(--primary-dark); padding: 1px 6px; border-radius: 6px; font-size: .9em; }
+`;
+  var s = document.createElement("style");
+  s.textContent = css;
+  document.head.appendChild(s);
+})();
+</script>
+</head>
+<body>
+
+<header class="hero">
+  <span class="sym">𝔞 ⊂ A</span>
+  <h1>Noether環ゲーム</h1>
+  <p>極大イデアルを作ってしまった方が負け</p>
+</header>
+
+<main class="wrap">
+
+  <section class="card rules">
+    <h2>ルール</h2>
+    <ol>
+      <li>Noether環 A が与えられ、イデアル I は最初 <code>0</code> です。</li>
+      <li>2人が交互に、I に<strong>含まれない</strong> A の元 x を指定します。I は <code>I + (x)</code> に置き換わります。</li>
+      <li><b>極大イデアルを作ってしまった側の負け</b>です。</li>
+      <li>単元を指定して I = A にしてしまう手も負けとして扱います(単元を選べば極大イデアルを作らずに終われてしまうため)。</li>
+      <li>よって、極大でも A でもない真のイデアルを作り続ける必要があります。そのような手がなくなった側が負けです。</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>設定</h2>
+    <div class="grid">
+      <div class="field">
+        <label class="t" for="type">環 A</label>
+        <select id="type">
+          <option value="Z">ℤ(整数環)</option>
+          <option value="poly">F_p[x₁,…,xₙ](多項式環)</option>
+          <option value="quad">ℤ[w], w² = d(ℤ[√-5] など)</option>
+          <option value="art">有限局所環(厳密解析つき)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="t">先手</label>
+        <div class="seg">
+          <label><input type="radio" name="first" value="you" checked>あなた</label>
+          <label><input type="radio" name="first" value="cpu">CPU</label>
+        </div>
+      </div>
+      <div class="field" id="optPoly" style="display:none">
+        <label class="t">体の標数 p / 変数の数 n(変数名は x, y, z)</label>
+        <div class="inline">
+          <select id="p"><option>2</option><option selected>3</option><option>5</option><option>7</option></select>
+          <select id="n"><option>1</option><option selected>2</option><option>3</option></select>
+        </div>
+      </div>
+      <div class="field" id="optQuad" style="display:none">
+        <label class="t" for="d">d(平方数でない整数。元の入力例: <code>3+2w</code>, <code>-w</code>)</label>
+        <input type="text" id="d" value="-5">
+      </div>
+      <div class="field" id="optArt" style="display:none">
+        <label class="t" for="art">環の選択</label>
+        <select id="art"></select>
+      </div>
+    </div>
+    <div class="start-row"><button class="btn-primary" id="start">▶ 開始 / リセット</button></div>
+  </section>
+
+  <section class="card" id="board">
+    <h2>盤面</h2>
+    <div class="board-head">
+      <span class="pill ring" id="ringName">未開始</span>
+      <span class="pill turn-end" id="turnPill">待機中</span>
+    </div>
+    <div class="ideal"><small>CURRENT IDEAL</small><span id="ideal">I = ?</span></div>
+    <div class="note" id="note">環を選んで「開始」を押してください。</div>
+    <div class="banner" id="banner"></div>
+    <div class="moverow">
+      <div class="xin"><span>x =</span><input type="text" id="x" placeholder="" disabled autocomplete="off"></div>
+      <button class="btn-primary" id="move" disabled>指す</button>
+      <button class="btn-ghost" id="hint" disabled>💡 ヒント</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>棋譜</h2>
+    <div id="log"><div class="empty">まだ手がありません。</div></div>
+  </section>
+
+  <details class="card">
+    <summary>理論メモ</summary>
+    <ul>
+      <li>位置 I は商環 A/I と同一視できます。手は A/I の 0 でない元 x による商 A/I → A/(I+(x)) です。</li>
+      <li>A/I の 0 でない非単元 x で、A/(I+(x)) が体にならないものがあれば、負けずに指せます。そのような x がない位置が「手番側の負け(P位置)」の終端です。</li>
+      <li>PID(ℤ, k[X])では、I = (f) に対し、f の素因数の個数(重複込み)を Ω(f) とします。Ω(f) = 2 のとき手番側が負けで、Ω(f) ≥ 3 または I = 0 のとき手番側が勝ちです。Ω(f) ≥ 3 なら、f の素因数2個の積を指せば Ω = 2 の位置に移れます。I = 0 のときは p² や pq を指せば勝てます。</li>
+      <li>「有限局所環」モードは全探索で厳密に解くので、CPUは最善手を指し、ヒントも正確です。</li>
+      <li>F_p[x₁,…,xₙ](n ≥ 2)の極大性は、商環が体かどうかを正確に判定しています。0次元でなければ極大ではありません。0次元のときは、Frobenius写像の核と固定空間の次元から判定します。ただし商の次元が36を超えると未判定になります。</li>
+      <li>F_p[x₁,…,xₙ](n ≥ 2)と ℤ[w] の CPU は、有限個の候補を試す簡易戦略です(「相手に安全な手が残らない位置」を探します)。勝敗は証明されていません。「安全な手がない」という CPU の判断も、探索範囲内でのものです。</li>
+    </ul>
+  </details>
+</main>
+
+<script>
+"use strict";
+const NAMES = ["x", "y", "z"];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------- F_p[x1..xn] 上の多項式演算(辞書式順序、Buchberger) ---------- */
+function PF(p, n) {
+  const md = a => ((a % p) + p) % p;
+  const inv = a => { a = md(a); let r = 1, b = a, e = p - 2; while (e > 0) { if (e & 1) r = r * b % p; b = b * b % p; e >>= 1; } return r; };
+  const key = e => e.join(","), unkey = k => k.split(",").map(Number);
+  const zero = () => Array(n).fill(0);
+  const cmp = (a, b) => { for (let i = 0; i < n; i++) if (a[i] !== b[i]) return a[i] - b[i]; return 0; };
+  const lead = f => {
+    let be = null, bk = null;
+    for (const k of f.keys()) { const e = unkey(k); if (!be || cmp(e, be) > 0) { be = e; bk = k; } }
+    return be ? { e: be, c: f.get(bk) } : null;
+  };
+  const addTerm = (f, k, c) => { const v = md((f.get(k) || 0) + c); if (v === 0) f.delete(k); else f.set(k, v); };
+  const add = (f, g, s = 1) => { const r = new Map(f); for (const [k, c] of g) addTerm(r, k, s * c); return r; };
+  const mulPoly = (f, g) => {
+    const r = new Map();
+    for (const [k1, c1] of f) for (const [k2, c2] of g) {
+      const a = unkey(k1), b = unkey(k2);
+      addTerm(r, key(a.map((x, i) => x + b[i])), c1 * c2);
+    }
+    return r;
+  };
+  const mulTerm = (f, e, c) => {
+    const r = new Map();
+    for (const [k, c1] of f) { const a = unkey(k); r.set(key(a.map((x, i) => x + e[i])), md(c1 * c)); }
+    return r;
+  };
+  const divides = (lg, e) => e.every((x, i) => x >= lg[i]);
+  const nf = (f, G) => {
+    const r = new Map(); let h = new Map(f);
+    while (h.size) {
+      const L = lead(h); let done = false;
+      for (const g of G) {
+        const lg = lead(g);
+        if (divides(lg.e, L.e)) {
+          const m = L.e.map((x, i) => x - lg.e[i]);
+          h = add(h, mulTerm(g, m, md(L.c * inv(lg.c))), -1);
+          done = true; break;
+        }
+      }
+      if (!done) { addTerm(r, key(L.e), L.c); h.delete(key(L.e)); }
+    }
+    return r;
+  };
+  const spoly = (f, g) => {
+    const lf = lead(f), lg = lead(g);
+    const l = lf.e.map((x, i) => Math.max(x, lg.e[i]));
+    return add(mulTerm(f, l.map((x, i) => x - lf.e[i]), inv(lf.c)),
+               mulTerm(g, l.map((x, i) => x - lg.e[i]), inv(lg.c)), -1);
+  };
+  const gb = F => {
+    const G = F.filter(f => f.size);
+    const pairs = [];
+    for (let i = 0; i < G.length; i++) for (let j = 0; j < i; j++) pairs.push([i, j]);
+    while (pairs.length) {
+      const [i, j] = pairs.pop();
+      const s = nf(spoly(G[i], G[j]), G);
+      if (s.size) { G.push(s); const k = G.length - 1; for (let t = 0; t < k; t++) pairs.push([k, t]); }
+    }
+    let M = [];
+    G.forEach((g, i) => {
+      const lg = lead(g);
+      const redundant = G.some((h, j) => {
+        if (j === i) return false;
+        const lh = lead(h);
+        const div = divides(lh.e, lg.e), eq = cmp(lh.e, lg.e) === 0;
+        return div && (!eq || j < i);
+      });
+      if (!redundant) M.push(g);
+    });
+    M = M.map(g => mulTerm(g, zero(), inv(lead(g).c)));
+    const R = M.map((g, i) => {
+      const others = M.filter((_, j) => j !== i), lg = lead(g);
+      const rest = new Map(g); rest.delete(key(lg.e));
+      const r = nf(rest, others); r.set(key(lg.e), 1); return r;
+    });
+    R.sort((a, b) => -cmp(lead(a).e, lead(b).e));
+    return R;
+  };
+  const constMap = v => (md(v) ? new Map([[key(zero()), md(v)]]) : new Map());
+  const parse = s => {
+    const src = s.replace(/\s+/g, "");
+    const t = src.match(/[a-z]|\d+|[-+*^()]/g);
+    if (!t || t.join("") !== src) throw new Error("式を解釈できません");
+    let i = 0;
+    const names = NAMES.slice(0, n);
+    const pw = (b) => {
+      if (t[i] === "^") {
+        i++; const e = parseInt(t[i++]);
+        if (isNaN(e) || e > 30) throw new Error("指数が不正です");
+        let r = constMap(1); for (let k = 0; k < e; k++) r = mulPoly(r, b); return r;
+      }
+      return b;
+    };
+    const atom = () => {
+      const c = t[i++];
+      if (c === undefined) throw new Error("式が途中で終わっています");
+      if (c === "(") { const r = expr(); if (t[i++] !== ")") throw new Error("括弧が閉じていません"); return pw(r); }
+      if (/^\d+$/.test(c)) return pw(constMap(parseInt(c)));
+      const idx = names.indexOf(c);
+      if (idx < 0) throw new Error("未知の変数: " + c);
+      const e = zero(); e[idx] = 1; return pw(new Map([[key(e), 1]]));
+    };
+    const factor = () => {
+      if (t[i] === "-") { i++; return mulPoly(constMap(-1), factor()); }
+      if (t[i] === "+") { i++; return factor(); }
+      return atom();
+    };
+    const term = () => {
+      let r = factor();
+      while (i < t.length && (t[i] === "*" || /^[a-z\d(]/.test(t[i]))) { if (t[i] === "*") i++; r = mulPoly(r, factor()); }
+      return r;
+    };
+    const expr = () => {
+      let r = term();
+      while (t[i] === "+" || t[i] === "-") { const s = t[i++]; r = add(r, term(), s === "-" ? -1 : 1); }
+      return r;
+    };
+    const r = expr();
+    if (i < t.length) throw new Error("式を解釈できません");
+    return r;
+  };
+  const show = f => {
+    if (!f.size) return "0";
+    const ks = [...f.keys()].map(unkey).sort((a, b) => -cmp(a, b));
+    return ks.map((e, idx) => {
+      const c = f.get(key(e));
+      const mono = e.map((x, j) => x === 0 ? "" : (x === 1 ? NAMES[j] : NAMES[j] + "^" + x)).join("");
+      const cs = mono === "" ? String(c) : (c === 1 ? "" : String(c));
+      return (idx ? " + " : "") + cs + mono;
+    }).join("");
+  };
+  return { md, inv, key, unkey, zero, cmp, lead, add, mulPoly, mulTerm, nf, gb, parse, show, constMap };
+}
+
+/* ---------- ℤ ---------- */
+function makeZ() {
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
+  const prime = m => { if (m < 2) return false; for (let i = 2; i * i <= m; i++) if (m % i === 0) return false; return true; };
+  const factorize = m => { const f = []; m = Math.abs(m); for (let q = 2; q * q <= m; q++) while (m % q === 0) { f.push(q); m /= q; } if (m > 1) f.push(m); return f; };
+  const pick = I => {
+    if (I === 0) { const c = [4, 6, 9, 10, 14, 15, 21, 25, 49]; return c[Math.floor(Math.random() * c.length)]; }
+    const f = factorize(I);
+    if (f.length < 3) return null;
+    const i = Math.floor(Math.random() * f.length);
+    let j = Math.floor(Math.random() * (f.length - 1)); if (j >= i) j++;
+    return f[i] * f[j];
+  };
+  return {
+    name: "ℤ", placeholder: "整数(例: 12)",
+    zero: () => 0,
+    parse: s => { if (!/^\s*-?\d+\s*$/.test(s)) throw new Error("整数を入力してください"); const v = Number(s); if (Math.abs(v) > 1e12) throw new Error("大きすぎます"); return v; },
+    showElt: x => String(x),
+    inI: (I, x) => (I === 0 ? x === 0 : x % I === 0),
+    add: (I, x) => gcd(I, x),
+    whole: I => I === 1,
+    maximal: I => prime(I),
+    show: I => "I = (" + I + ")" + (prime(I) ? "   [極大イデアル]" : ""),
+    outcome: () => "先手必勝(素数2個の積 p², pq などを指す)",
+    cpu: I => pick(I),
+    hint: I => {
+      if (I === 0) return "素数2個の積(4, 6, 9, 10 など)を指すと必勝です。相手はどう指しても極大イデアルか I = A を作ってしまいます。";
+      const f = factorize(I);
+      if (f.length >= 3) return "必勝手の例: x = " + (f[0] * f[1]) + "(素因数2個の積。(" + (f[0] * f[1]) + ") は負け位置です)";
+      return "この位置は手番側の負けです(どの手でも極大イデアルか I = A になります)。";
+    }
+  };
+}
+
+/* ---------- F_p[x1..xn] ---------- */
+function makePoly(p, n) {
+  const P = PF(p, n);
+  const isWhole = G => G.length === 1 && P.lead(G[0]).e.every(v => v === 0);
+  const inI = (I, x) => P.nf(x, I).size === 0;
+  const add = (I, x) => P.gb([...I, x]);
+
+  const rankMod = vs => {
+    const rows = vs.map(v => [...v]);
+    const m = rows.length ? rows[0].length : 0;
+    let r = 0;
+    for (let c = 0; c < m && r < rows.length; c++) {
+      let piv = -1;
+      for (let i = r; i < rows.length; i++) if (rows[i][c] % p) { piv = i; break; }
+      if (piv < 0) continue;
+      [rows[r], rows[piv]] = [rows[piv], rows[r]];
+      const iv = P.inv(rows[r][c]);
+      rows[r] = rows[r].map(x => (x * iv) % p);
+      for (let i = 0; i < rows.length; i++) {
+        if (i !== r && rows[i][c] % p) {
+          const f = rows[i][c];
+          rows[i] = rows[i].map((x, t) => P.md(x - f * rows[r][t]));
+        }
+      }
+      r++;
+    }
+    return r;
+  };
+
+  /* n>=2: 商環 F_p[x]/I が体か。体 ⇔ 0次元・被約・既約成分1個 */
+  const fieldTest = G => {
+    if (!G.length || isWhole(G)) return false;
+    const leads = G.map(g => P.lead(g).e);
+    const bounds = [];
+    for (let i = 0; i < n; i++) {
+      const c = leads.filter(e => e[i] > 0 && e.every((v, j) => j === i || v === 0)).map(e => e[i]);
+      if (!c.length) return false;          // 正次元なら体にならない
+      bounds.push(Math.min(...c));
+    }
+    const basis = [];
+    const rec = (i, e) => {
+      if (i === n) { if (!leads.some(l => l.every((v, j) => e[j] >= v))) basis.push(e); return; }
+      for (let k = 0; k < bounds[i]; k++) rec(i + 1, [...e, k]);
+    };
+    rec(0, []);
+    const dim = basis.length;
+    if (dim > 36) return null;
+    const idx = new Map(basis.map((e, i) => [P.key(e), i]));
+    const powmod = (f, k) => {
+      let r = P.constMap(1), b = P.nf(f, G);
+      while (k > 0) {
+        if (k & 1) r = P.nf(P.mulPoly(r, b), G);
+        b = P.nf(P.mulPoly(b, b), G);
+        k = Math.floor(k / 2);
+      }
+      return r;
+    };
+    const vec = f => { const v = Array(dim).fill(0); for (const [k, c] of f) v[idx.get(k)] = c; return v; };
+    let q = 1; while (q < dim) q *= p;
+    const colsK = [], cols1 = [];
+    basis.forEach((e, j) => {
+      const m = new Map([[P.key(e), 1]]);
+      colsK.push(vec(powmod(m, q)));
+      const v = vec(powmod(m, p)); v[j] = P.md(v[j] - 1); cols1.push(v);
+    });
+    return rankMod(colsK) === dim && rankMod(cols1) === dim - 1;
+  };
+
+  /* n=1: F_p[x] は PID。既約因子への分解 */
+  const deg1 = f => P.lead(f).e[0];
+  const quot = (f, h) => {
+    let r = new Map(f); const q = new Map(); const lh = P.lead(h);
+    while (r.size && P.lead(r).e[0] >= lh.e[0]) {
+      const L = P.lead(r), c = P.md(L.c * P.inv(lh.c)), sh = L.e[0] - lh.e[0];
+      q.set(String(sh), c);
+      r = P.add(r, P.mulTerm(h, [sh], c), -1);
+    }
+    return q;
+  };
+  const factorsUni = f => {
+    const out = []; let g = new Map(f);
+    while (g.size && deg1(g) > 0) {
+      let found = null;
+      outer: for (let d = 1; d <= Math.floor(deg1(g) / 2); d++) {
+        const total = Math.pow(p, d);
+        for (let code = 0; code < total; code++) {
+          const h = new Map(); h.set(String(d), 1); let c = code;
+          for (let j = 0; j < d; j++) { const v = c % p; c = Math.floor(c / p); if (v) h.set(String(j), v); }
+          if (P.nf(g, [h]).size === 0) { found = h; break outer; }
+        }
+      }
+      if (!found) { out.push(g); break; }
+      out.push(found); g = quot(g, found);
+    }
+    return out;
+  };
+
+  const maximal = G => {
+    if (!G.length || isWhole(G)) return false;
+    if (n === 1) return factorsUni(G[0]).length === 1;
+    return fieldTest(G);
+  };
+
+  const linear = () => {
+    const out = [];
+    for (let i = 0; i < n; i++) for (let c = 0; c < p; c++) {
+      const e = P.zero(); e[i] = 1;
+      const f = new Map([[P.key(e), 1]]);
+      if (c) f.set(P.key(P.zero()), P.md(-c));
+      out.push(f);
+    }
+    return out;
+  };
+  const randomPoly = deg => {
+    const f = new Map();
+    const rec = (i, left, e) => {
+      if (i === n) { const c = Math.floor(Math.random() * p); if (c) f.set(P.key(e), c); return; }
+      for (let k = 0; k <= left; k++) rec(i + 1, left - k, [...e, k]);
+    };
+    rec(0, deg, []);
+    return f;
+  };
+  const hasSafe = (J, S) => {
+    for (const y of S) {
+      if (inI(J, y)) continue;
+      const K = add(J, y);
+      if (isWhole(K)) continue;
+      if (maximal(K) !== true) return true;
+    }
+    return false;
+  };
+
+  const base = {
+    name: `F${p}[${NAMES.slice(0, n).join(",")}]`,
+    placeholder: "多項式(例: x^2+y, x-1)",
+    zero: () => [],
+    parse: P.parse, showElt: P.show, inI, add, whole: isWhole, maximal,
+    show: G => {
+      const m = maximal(G);
+      const s = G.length ? "I = (" + G.map(P.show).join(", ") + ")" : "I = (0)";
+      return s + (m === true ? "   [極大イデアル]" : m === null ? "   [極大性は未判定]" : "");
+    }
+  };
+
+  if (n === 1) {
+    return Object.assign(base, {
+      outcome: () => "先手必勝(既約多項式2個の積、例: x² を指す)",
+      cpu: I => {
+        if (!I.length) {
+          const a = Math.floor(Math.random() * p), b = Math.floor(Math.random() * p);
+          return P.parse(`(x+${a})(x+${b})`);
+        }
+        const fs = factorsUni(I[0]);
+        if (fs.length < 3) return null;
+        const i = Math.floor(Math.random() * fs.length);
+        let j = Math.floor(Math.random() * (fs.length - 1)); if (j >= i) j++;
+        return P.mulPoly(fs[i], fs[j]);
+      },
+      hint: I => {
+        if (!I.length) return "既約多項式2個の積(x², x(x+1) など)を指すと必勝です。";
+        const fs = factorsUni(I[0]);
+        if (fs.length >= 3) return "必勝手の例: x = " + P.show(P.mulPoly(fs[0], fs[1])) + "(既約因子2個の積)";
+        return "この位置は手番側の負けです(どの手でも極大イデアルか I = A になります)。";
+      }
+    });
+  }
+
+  return Object.assign(base, {
+    cpu: I => {
+      const S = [...linear()];
+      for (let t = 0; t < 12; t++) { const f = randomPoly(2); if (f.size) S.push(f); }
+      const cands = shuffle([...linear(), ...Array.from({ length: 50 }, () => randomPoly(2)).filter(f => f.size)]);
+      const safe = [];
+      let tested = 0;
+      for (const x of cands) {
+        if (inI(I, x)) continue;
+        const J = add(I, x);
+        if (isWhole(J) || maximal(J) === true) continue;
+        safe.push(x);
+        if (!hasSafe(J, S)) return x;
+        if (++tested >= 30) break;
+      }
+      return safe.length ? safe[Math.floor(Math.random() * safe.length)] : null;
+    }
+  });
+}
+
+/* ---------- ℤ[w], w^2 = d ---------- */
+function makeQuad(d) {
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
+  const prime = m => { if (m < 2) return false; for (let i = 2; i * i <= m; i++) if (m % i === 0) return false; return true; };
+  const hnf = vs => {
+    let rows = vs.map(v => [v[0], v[1]]).filter(v => v[0] || v[1]);
+    let piv = null;
+    while (true) {
+      const nz = rows.filter(r => r[0] !== 0);
+      if (!nz.length) { piv = null; break; }
+      nz.sort((a, b) => Math.abs(a[0]) - Math.abs(b[0]));
+      piv = nz[0];
+      if (nz.length === 1) break;
+      rows = rows.map(r => {
+        if (r === piv || r[0] === 0) return r;
+        const q = Math.trunc(r[0] / piv[0]);
+        return [r[0] - q * piv[0], r[1] - q * piv[1]];
+      });
+    }
+    let k = 0;
+    for (const r of rows) if (r !== piv) k = gcd(k, r[1]);
+    if (!piv) return [0, 0, k];
+    let [g, h] = piv[0] < 0 ? [-piv[0], -piv[1]] : [piv[0], piv[1]];
+    if (k > 0) h = ((h % k) + k) % k;
+    return [g, h, k];
+  };
+  const rows = I => { const r = []; if (I[0] > 0) r.push([I[0], I[1]]); if (I[2] > 0) r.push([0, I[2]]); return r; };
+  const gens = (I, x) => [...rows(I), x, [x[1] * d, x[0]]];
+  const add = (I, x) => hnf(gens(I, x));
+  const inI = (I, x) => { const J = hnf([...rows(I), x]); return J[0] === I[0] && J[1] === I[1] && J[2] === I[2]; };
+  const whole = I => I[0] === 1 && I[1] === 0 && I[2] === 1;
+  const nonResidue = m => { for (let s = 0; s < m; s++) if (((s * s - d) % m + m) % m === 0) return false; return true; };
+  const maximal = I => {
+    if (!(I[0] > 0 && I[2] > 0)) return false;
+    const N = I[0] * I[2];
+    if (prime(N)) return true;
+    for (let q = 2; q * q <= N; q++) {
+      if (N === q * q && prime(q)) return I[0] === q && I[1] === 0 && I[2] === q && q % 2 === 1 && nonResidue(q);
+    }
+    return false;
+  };
+  const showElt = x => {
+    const [a, b] = x;
+    if (b === 0) return String(a);
+    const bs = b === 1 ? "w" : b === -1 ? "-w" : b + "w";
+    return a === 0 ? bs : a + (b > 0 ? "+" : "") + bs;
+  };
+  const isSafe = J => !whole(J) && !maximal(J);
+  const hasSafe = (J, B) => {
+    for (let a = -B; a <= B; a++) for (let b = -B; b <= B; b++) {
+      if (!a && !b) continue;
+      const x = [a, b];
+      if (inI(J, x)) continue;
+      if (isSafe(add(J, x))) return true;
+    }
+    return false;
+  };
+  return {
+    name: `ℤ[w], w²=${d}`, placeholder: "a+bw(例: 3+2w)",
+    zero: () => [0, 0, 0],
+    parse: s => {
+      const parts = s.replace(/\s+/g, "").replace(/-/g, "+-").split("+").filter(t => t !== "");
+      let a = 0, b = 0;
+      for (const t of parts) {
+        let m;
+        if ((m = /^(-?)(\d*)w$/.exec(t))) b += (m[1] ? -1 : 1) * (m[2] === "" ? 1 : Number(m[2]));
+        else if (/^-?\d+$/.test(t)) a += Number(t);
+        else throw new Error("a+bw の形で入力してください");
+      }
+      return [a, b];
+    },
+    showElt, inI, add, whole, maximal,
+    show: I => {
+      const r = rows(I).map(v => `(${v[0]},${v[1]})`).join(", ");
+      const idx = I[0] * I[2];
+      return `I = ℤ-格子 {${r || "0"}}` + (idx ? `,  指数 ${idx}` : "") + (maximal(I) ? "   [極大イデアル]" : "") + "\n格子ベクトル (a,b) は a+bw を表します。";
+    },
+    cpu: I => {
+      const B = 12, cands = [];
+      for (let a = -B; a <= B; a++) for (let b = -B; b <= B; b++) if (a || b) cands.push([a, b]);
+      shuffle(cands);
+      const safe = [];
+      let tested = 0;
+      for (const x of cands) {
+        if (inI(I, x)) continue;
+        const J = add(I, x);
+        if (!isSafe(J)) continue;
+        safe.push(x);
+        if (!hasSafe(J, 6)) return x;
+        if (++tested >= 120) break;
+      }
+      return safe.length ? safe[Math.floor(Math.random() * safe.length)] : null;
+    }
+  };
+}
+
+/* ---------- 有限局所環 F_p[x..]/(単項式イデアル):厳密な勝敗解析 ---------- */
+const ART_PRESETS = [
+  ["F₂[x,y]/(x², y²)", 2, 2, [[2,0],[0,2]]],
+  ["F₂[x,y]/(x,y)²", 2, 2, [[2,0],[1,1],[0,2]]],
+  ["F₂[x,y]/(x³, y³)", 2, 2, [[3,0],[0,3]]],
+  ["F₂[x,y]/(x², y³)", 2, 2, [[2,0],[0,3]]],
+  ["F₂[x,y]/(x⁴, y²)", 2, 2, [[4,0],[0,2]]],
+  ["F₃[x,y]/(x², y²)", 3, 2, [[2,0],[0,2]]],
+  ["F₂[x,y]/(x³, xy, y³)", 2, 2, [[3,0],[1,1],[0,3]]],
+  ["F₂[x]/(x⁶)", 2, 1, [[6]]],
+  ["F₂[x,y,z]/(x², y², z²)", 2, 3, [[2,0,0],[0,2,0],[0,0,2]]]
+];
+
+function makeArt(idx) {
+  const [label, p, n, rel] = ART_PRESETS[idx];
+  const P = PF(p, n);
+  const bounds = [];
+  for (let i = 0; i < n; i++) {
+    bounds.push(Math.min(...rel.filter(r => r[i] > 0 && r.every((v, j) => j === i || v === 0)).map(r => r[i])));
+  }
+  const basis = [];
+  const rec = (i, e) => {
+    if (i === n) { if (!rel.some(r => r.every((v, j) => e[j] >= v))) basis.push(e); return; }
+    for (let k = 0; k < bounds[i]; k++) rec(i + 1, [...e, k]);
+  };
+  rec(0, []);
+  const dim = basis.length;
+  const index = new Map(basis.map((m, i) => [m.join(","), i]));
+  const mul = (a, b) => {
+    const res = Array(dim).fill(0);
+    for (let i = 0; i < dim; i++) {
+      if (!a[i]) continue;
+      for (let j = 0; j < dim; j++) {
+        if (!b[j]) continue;
+        const k = index.get(basis[i].map((v, t) => v + basis[j][t]).join(","));
+        if (k !== undefined) res[k] = (res[k] + a[i] * b[j]) % p;
+      }
+    }
+    return res;
+  };
+  const rref = vectors => {
+    const rows = vectors.map(v => [...v]);
+    let r = 0;
+    for (let col = 0; col < dim; col++) {
+      let piv = -1;
+      for (let i = r; i < rows.length; i++) if (rows[i][col] % p) { piv = i; break; }
+      if (piv < 0) continue;
+      [rows[r], rows[piv]] = [rows[piv], rows[r]];
+      const iv = P.inv(rows[r][col]);
+      rows[r] = rows[r].map(x => (x * iv) % p);
+      for (let i = 0; i < rows.length; i++) {
+        if (i !== r && rows[i][col] % p) {
+          const f = rows[i][col];
+          rows[i] = rows[i].map((x, t) => (((x - f * rows[r][t]) % p) + p) % p);
+        }
+      }
+      r++;
+    }
+    return rows.slice(0, r);
+  };
+  const unit = k => Array.from({ length: dim }, (_, i) => (i === k ? 1 : 0));
+  const add = (I, x) => {
+    const v = [...I];
+    for (let k = 0; k < dim; k++) v.push(mul(x, unit(k)));
+    return rref(v);
+  };
+  const same = (A, B) => JSON.stringify(A) === JSON.stringify(B);
+  const nonunits = () => {
+    const out = [], total = Math.pow(p, dim - 1);
+    for (let c = 1; c < total; c++) {
+      const v = [0]; let t = c;
+      for (let j = 0; j < dim - 1; j++) { v.push(t % p); t = Math.floor(t / p); }
+      out.push(v);
+    }
+    return out;
+  };
+  const NU = nonunits();
+  const movesCache = new Map(), winCache = new Map();
+  /* 負けずに指せる手のみ(次が極大イデアル = 長さ dim-1 になる手は除く) */
+  const moves = I => {
+    const k = JSON.stringify(I);
+    if (movesCache.has(k)) return movesCache.get(k);
+    const res = new Map();
+    for (const x of NU) {
+      const J = add(I, x);
+      if (J.length === I.length && same(J, I)) continue;
+      if (J.length >= dim - 1) continue;
+      const jk = JSON.stringify(J);
+      if (!res.has(jk)) res.set(jk, { J, x });
+    }
+    movesCache.set(k, res);
+    return res;
+  };
+  const win = I => {
+    const k = JSON.stringify(I);
+    if (winCache.has(k)) return winCache.get(k);
+    let r = false;
+    for (const { J } of moves(I).values()) if (!win(J)) { r = true; break; }
+    winCache.set(k, r);
+    return r;
+  };
+  const toMap = v => { const f = new Map(); v.forEach((c, i) => { if (c) f.set(basis[i].join(","), c); }); return f; };
+  const best = I => {
+    for (const { J, x } of moves(I).values()) if (!win(J)) return x;
+    return null;
+  };
+  return {
+    name: label, placeholder: "多項式(例: x+y, xy)",
+    zero: () => [],
+    parse: s => {
+      const f = P.parse(s), v = Array(dim).fill(0);
+      for (const [k, c] of f) { const i = index.get(k); if (i !== undefined) v[i] = c; }
+      return v;
+    },
+    showElt: v => P.show(toMap(v)),
+    inI: (I, x) => same(rref([...I, x]), I),
+    add, whole: I => I.length === dim, maximal: I => I.length === dim - 1,
+    show: I => "I = (" + (I.length ? I.map(v => P.show(toMap(v))).join(", ") : "0") + ")" +
+      (I.length === dim - 1 ? "   [極大イデアル]" : "") + `\n標準単項式の個数 = ${dim}。この環は全探索で厳密に解いています。`,
+    outcome: () => win([]) ? "先手必勝" : "後手必勝",
+    cpu: I => {
+      if (!moves(I).size) return null;
+      const b = best(I);
+      return b || moves(I).values().next().value.x;
+    },
+    hint: I => {
+      if (!moves(I).size) return "負けずに指せる手がありません(どの手でも極大イデアルか I = A になります)。";
+      return win(I) ? "必勝手の例: x = " + P.show(toMap(best(I))) : "この位置は手番側の負けです(どの手でも相手に必勝手が残ります)。";
+    }
+  };
+}
+
+/* ---------- ゲーム進行・UI ---------- */
+const $ = id => document.getElementById(id);
+let ring = null, I = null, turn = null, over = true;
+
+function log(msg, cls) {
+  const box = $("log");
+  const empty = box.querySelector(".empty");
+  if (empty) empty.remove();
+  const div = document.createElement("div");
+  div.className = "m " + (cls || "sys");
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function refresh() {
+  $("ringName").textContent = "A = " + ring.name;
+  const parts = ring.show(I).split("\n");
+  let main = parts[0], tag = "";
+  const m = /\s*\[(.+?)\]\s*$/.exec(main);
+  if (m) { tag = m[1]; main = main.replace(m[0], ""); }
+  const idealEl = $("ideal");
+  idealEl.textContent = main;
+  if (tag) {
+    const t = document.createElement("span");
+    t.className = "pill tag"; t.textContent = tag;
+    idealEl.appendChild(t);
+  }
+  $("note").textContent = parts.slice(1).join("\n");
+  const tp = $("turnPill");
+  if (over) { tp.className = "pill turn-end"; tp.textContent = "ゲーム終了"; }
+  else if (turn === "you") { tp.className = "pill turn-you"; tp.textContent = "あなたの番"; }
+  else { tp.className = "pill turn-cpu"; tp.textContent = "CPUが考え中…"; }
+  const active = !over && turn === "you";
+  $("x").disabled = !active; $("move").disabled = !active;
+  $("hint").disabled = !(active && ring.hint);
+  if (active) $("x").focus();
+}
+
+function finish(msg, won) {
+  over = true;
+  log(msg, "end");
+  const b = $("banner");
+  b.className = "banner " + (won ? "win" : "lose");
+  b.textContent = won ? "🎉 あなたの勝ちです!" : "💥 あなたの負けです";
+  refresh();
+}
+
+function buildRing() {
+  const t = $("type").value;
+  if (t === "Z") return makeZ();
+  if (t === "poly") return makePoly(Number($("p").value), Number($("n").value));
+  if (t === "quad") {
+    const d = Number($("d").value);
+    if (!Number.isInteger(d) || d === 0 || d === 1 || (d > 0 && Number.isInteger(Math.sqrt(d)))) throw new Error("d は平方数でない整数にしてください");
+    return makeQuad(d);
+  }
+  return makeArt(Number($("art").value));
+}
+
+function start() {
+  $("log").innerHTML = "";
+  $("banner").className = "banner";
+  try { ring = buildRing(); } catch (e) { alert(e.message); return; }
+  I = ring.zero(); over = false;
+  $("x").placeholder = ring.placeholder || "";
+  turn = document.querySelector("input[name=first]:checked").value;
+  log(`ゲーム開始: A = ${ring.name}` + (ring.outcome ? `(解析結果: ${ring.outcome()})` : ""), "sys");
+  refresh();
+  if (turn === "cpu") setTimeout(cpuTurn, 400);
+}
+
+function cpuTurn() {
+  if (over) return;
+  const x = ring.cpu(I);
+  if (x === null) {
+    finish(ring.outcome
+      ? "CPUには極大イデアルを作らずに指せる手がありません。"
+      : "CPUは探索範囲内で、極大イデアルを作らずに指せる手を見つけられませんでした。", true);
+    return;
+  }
+  log("CPU: x = " + ring.showElt(x), "cpu");
+  I = ring.add(I, x);
+  turn = "you";
+  refresh();
+}
+
+function humanMove() {
+  if (over || turn !== "you") return;
+  let x;
+  try { x = ring.parse($("x").value); } catch (e) { alert(e.message); return; }
+  if (ring.inI(I, x)) { alert("x は I に含まれています。含まれない元を指定してください。"); return; }
+  log("あなた: x = " + ring.showElt(x), "you");
+  I = ring.add(I, x);
+  $("x").value = "";
+  if (ring.whole(I)) { finish("I = A になりました(単元を指定しました)。", false); return; }
+  if (ring.maximal(I) === true) { finish("極大イデアルを作ってしまいました。", false); return; }
+  turn = "cpu";
+  refresh();
+  setTimeout(cpuTurn, 400);
+}
+
+function syncOptions() {
+  const t = $("type").value;
+  $("optPoly").style.display = t === "poly" ? "" : "none";
+  $("optQuad").style.display = t === "quad" ? "" : "none";
+  $("optArt").style.display = t === "art" ? "" : "none";
+}
+
+ART_PRESETS.forEach((a, i) => { const o = document.createElement("option"); o.value = i; o.textContent = a[0]; $("art").appendChild(o); });
+$("type").addEventListener("change", syncOptions);
+$("start").addEventListener("click", start);
+$("move").addEventListener("click", humanMove);
+$("x").addEventListener("keydown", e => { if (e.key === "Enter") humanMove(); });
+$("hint").addEventListener("click", () => { if (ring && ring.hint && !over) log("ヒント: " + ring.hint(I), "sys"); });
+syncOptions();
+</script>
+</body>
+</html>
