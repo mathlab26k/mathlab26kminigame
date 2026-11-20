@@ -69,13 +69,8 @@
     }
 
     .section-title {
-      margin: 0 0 8px;
-      font-size: 1.4rem;
-    }
-
-    .summary {
       margin: 0 0 24px;
-      color: var(--muted);
+      font-size: 1.4rem;
     }
 
     .game-grid {
@@ -94,34 +89,12 @@
       box-shadow: 0 6px 20px rgb(23 36 59 / 4%);
     }
 
-    .card-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-
     .game-number {
+      margin: 0 0 18px;
       color: var(--accent);
       font-size: 0.85rem;
       font-weight: 700;
       letter-spacing: 0.08em;
-    }
-
-    .badge {
-      padding: 3px 10px;
-      border-radius: 999px;
-      background: #eef1f6;
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .badge.available {
-      background: #e6f5ed;
-      color: #17623c;
     }
 
     .game-card h3 {
@@ -140,16 +113,13 @@
       display: block;
       width: 100%;
       padding: 12px 16px;
-      border: 0;
       border-radius: 10px;
       background: var(--accent);
       color: #ffffff;
-      font: inherit;
       font-weight: 700;
       line-height: 1.5;
       text-align: center;
       text-decoration: none;
-      cursor: pointer;
     }
 
     .play-button:hover {
@@ -204,7 +174,6 @@
   <main class="container">
     <section aria-labelledby="games-heading">
       <h2 id="games-heading" class="section-title">ゲーム一覧</h2>
-      <p id="game-summary" class="summary" aria-live="polite"></p>
       <div id="game-list" class="game-grid"></div>
 
       <noscript>
@@ -225,81 +194,44 @@
   </footer>
 
   <script>
-
     const games = [
       {
         title: "正方形四目並べ",
         description: "正方形を作ったら勝ち、というルールの四目並べです。",
-        status: "公開済み",
         url: "https://ccbsapi.github.io/makesquare/"
       },
       {
         title: "大学数学の20の扉",
         description: "Jevが思い浮かべた大学数学の定理を、20回の質問で当てるゲームです。",
-        status: "公開済み",
         url: "https://theorem-detective.vercel.app/"
       },
       {
         title: "シーケント計算ゲーム",
         description: "群や自然数についての命題の形式的証明をしていくパズルです。",
-        status: "公開済み",
         url: "./sequent-game-unified-v3.html"
       },
       {
         title: "ネーター環ゲーム",
         description: "ネーター環のイデアルを交互に拡大していきます。極大イデアルにすると負け。",
-        status: "公開済み",
         url: "./Noetherian_ring_game_revised.html"
       },
       {
         title: "ホモロジー群当て",
         description: "地下空間の1次元ホモロジー群を当てると脱出できます。",
-        status: "公開済み",
         url: "./homology.html"
       }
     ];
 
-    // 外部リンクと、同じサイト内の相対リンクに対応します。
-    function getPlayableUrl(value) {
-      const path = value.trim();
-
-      // 空欄の場合はリンクを作りません。
-      if (!path) {
-        return null;
-      }
-
-      try {
-        const url = new URL(path, document.baseURI);
-
-        if (url.protocol === "https:" || url.protocol === "http:") {
-          return url.href;
-        }
-      } catch {
-        return null;
-      }
-
-      return null;
-    }
-
     const gameList = document.getElementById("game-list");
-    const gameSummary = document.getElementById("game-summary");
-    let availableCount = 0;
 
     games.forEach((game, index) => {
-      const playableUrl = getPlayableUrl(game.url);
-
       const card = document.createElement("article");
       card.className = "game-card";
 
-      const top = document.createElement("div");
-      top.className = "card-top";
-
-      const number = document.createElement("span");
+      const number = document.createElement("p");
       number.className = "game-number";
       number.textContent =
         `GAME ${String(index + 1).padStart(2, "0")}`;
-
-      top.append(number);
 
       const title = document.createElement("h3");
       title.textContent = game.title;
@@ -308,50 +240,15 @@
       description.className = "game-description";
       description.textContent = game.description;
 
-      let action;
-
-      if (playableUrl) {
-        availableCount += 1;
-
-        action = document.createElement("a");
-        action.href = playableUrl;
-        action.textContent = "遊ぶ →";
-        action.setAttribute(
-          "aria-label",
-          `${game.title}で遊ぶ`
-        );
-      } else {
-        action = document.createElement("button");
-        action.type = "button";
-
-        const isPublished = game.status.includes("公開済み");
-
-        action.textContent = isPublished
-          ? "リンク登録待ち"
-          : "開く →";
-
-        action.setAttribute(
-          "aria-label",
-          `${game.title}の公開状況を確認する`
-        );
-
-        action.addEventListener("click", () => {
-          const message = isPublished
-            ? "ゲームのリンクがまだ登録されていません。"
-            : "準備中です。公開までお待ちください。";
-
-          window.alert(`${game.title}\n\n${message}`);
-        });
-      }
-
+      const action = document.createElement("a");
       action.className = "play-button";
+      action.href = game.url;
+      action.textContent = "遊ぶ →";
+      action.setAttribute("aria-label", `${game.title}で遊ぶ`);
 
-      card.append(top, title, description, action);
+      card.append(number, title, description, action);
       gameList.append(card);
     });
-
-    gameSummary.textContent =
-      `全${games.length}ゲームのうち、${availableCount}ゲームがここから遊べます。`;
   </script>
 </body>
 </html>
