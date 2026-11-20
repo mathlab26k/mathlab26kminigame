@@ -1117,6 +1117,68 @@
        * a / b は { x, z, y }。
        * 軸に平行な階段として構築する。
        */
+
+      function addStairCeiling(a, b, stairWidth) {
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const length = Math.hypot(dx, dz);
+
+        if (length < 0.0001) {
+          return;
+        }
+
+        const px = -dz / length;
+        const pz = dx / length;
+
+        // 側壁との隙間が見えないよう、少し広くする。
+        const halfWidth = stairWidth / 2 + 0.06;
+        const clearance = 2.9;
+
+        const geometry = new THREE.BufferGeometry();
+
+        geometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(
+            [
+              a.x + px * halfWidth,
+              a.y + clearance,
+              a.z + pz * halfWidth,
+
+              a.x - px * halfWidth,
+              a.y + clearance,
+              a.z - pz * halfWidth,
+
+              b.x - px * halfWidth,
+              b.y + clearance,
+              b.z - pz * halfWidth,
+
+              b.x + px * halfWidth,
+              b.y + clearance,
+              b.z + pz * halfWidth
+            ],
+            3
+          )
+        );
+
+        geometry.setIndex([
+          0, 1, 2,
+          0, 2, 3
+        ]);
+
+        geometry.computeVertexNormals();
+
+        const material = ceilingMaterial.clone();
+        material.side = THREE.DoubleSide;
+        ownedMaterials.push(material);
+
+        const ceiling = new THREE.Mesh(
+          geometry,
+          material
+        );
+
+        world.add(ceiling);
+      }
+      
       function stairFlight(a, b, stairWidth, label) {
         const dx = b.x - a.x;
         const dz = b.z - a.z;
@@ -1231,6 +1293,10 @@
           );
         }
 
+        if (stairWallMode) {
+          addStairCeiling(a, b, stairWidth);
+        }
+        
         surfaces.push({
           x0: Math.min(a.x, b.x) - Math.abs(px) * half,
           x1: Math.max(a.x, b.x) + Math.abs(px) * half,
@@ -1366,6 +1432,14 @@
           centerZ + 1.25,
           middleY,
           "踊り場 · 1F ↔ 2F"
+        );
+
+        ceilingRect(
+          Math.min(outerFlight, outerLanding),
+          centerZ - 1.25,
+          Math.max(outerFlight, outerLanding),
+          centerZ + 1.25,
+          middleY + 2.9
         );
 
         stairFlight(
@@ -2081,7 +2155,7 @@
         makeMaterials();
 
         // ステージ③・⑦だけ、階段の左右を壁にする。
-        stairWallMode = index === 2 || index === 6;
+        stairWallMode = [1, 2, 6].includes(index);
 
         let start;
 
