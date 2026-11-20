@@ -299,11 +299,7 @@
       number.textContent =
         `GAME ${String(index + 1).padStart(2, "0")}`;
 
-      const badge = document.createElement("span");
-      badge.className = playableUrl ? "badge available" : "badge";
-      badge.textContent = playableUrl ? "公開中" : game.status;
-
-      top.append(number, badge);
+      top.append(number);
 
       const title = document.createElement("h3");
       title.textContent = game.title;
