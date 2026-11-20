@@ -191,6 +191,20 @@
       grid-row: 1;
     }
 
+    #backward {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    #forward,
+    #backward,
+    #view {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
     #left-turn {
       grid-column: 1;
       grid-row: 2;
@@ -341,6 +355,16 @@
     >
       ↑
       <span>進む</span>
+    </button>
+
+    <button
+      id="backward"
+      class="control"
+      type="button"
+      aria-label="後ろに進む"
+    >
+      ↓
+      <span>後退</span>
     </button>
 
     <button
@@ -2345,7 +2369,7 @@
         );
       }
 
-      function forward() {
+      function move(direction = 1, continuous = false) {
         if (!canOperate()) {
           return;
         }
@@ -2355,11 +2379,11 @@
         if (expansion.active) {
           path = expansion.planMove(
             state,
-            PLAYER.step
+            PLAYER.step * direction
           );
         } else {
-          const dx = Math.sin(state.yaw);
-          const dz = -Math.cos(state.yaw);
+          const dx = Math.sin(state.yaw) * direction;
+          const dz = -Math.cos(state.yaw) * direction;
           const samples = 65;
 
           path = [{
@@ -2398,9 +2422,17 @@
         }
 
         if (path.length < 3) {
-          showToast(
-            "壁・柱があり、これ以上は進めません。"
-          );
+          const message =
+            "壁・柱があり、これ以上は進めません。";
+
+          // 長押し中に同じ通知を連続発生させない。
+          if (
+            !toast.classList.contains("visible")
+            || toast.textContent !== message
+          ) {
+            showToast(message);
+          }
+
           return;
         }
 
@@ -2408,8 +2440,17 @@
           type: "move",
           start: performance.now(),
           duration: PLAYER.moveTime,
-          path
+          path,
+          continuous
         };
+      }
+
+      function forward() {
+        move(1);
+      }
+
+      function backward() {
+        move(-1);
       }
 
       function turn(direction) {
@@ -2436,7 +2477,10 @@
           (now - animation.start) / animation.duration
         );
 
-        const eased = t * t * (3 - 2 * t);
+        const eased =
+          animation.type === "move" && animation.continuous
+            ? t
+            : t * t * (3 - 2 * t);
 
         if (animation.type === "turn") {
           state.yaw = animation.from
@@ -2616,8 +2660,10 @@
           "あなたは地下空間に閉じ込められてしまいました。"
             + "\n通路を探索し、1次の整数係数ホモロジー群を"
             + "正しく答えると脱出できます。"
-            + "\n\n↑ / W：進む"
+            + "\n\n↑ / W：前進（長押しで連続移動）"
+            + "\n↓ / S：後退（長押しで連続移動）"
             + "\n← / A・→ / D：90度向きを変える"
+            + "\n画面の左右ドラッグ・スワイプ：自由に向きを変える"
             + "\nEsc：中断・ギブアップ"
             + "\n\n階段は進む操作で上り下りできます。"
             + "\nステージ⑩では、上り・下りの表示がある"
@@ -2800,63 +2846,7 @@
         );
       }
 
-      document.getElementById("forward").addEventListener(
-        "click",
-        forward
       );
-
-      document.getElementById("left-turn").addEventListener(
-        "click",
-        () => turn(-1)
-      );
-
-      document.getElementById("right-turn").addEventListener(
-        "click",
-        () => turn(1)
-      );
-
-      document.getElementById("escape").addEventListener(
-        "click",
-        escape
-      );
-
-      window.addEventListener("keydown", (event) => {
-        if (modal.open) {
-          return;
-        }
-
-        const key = event.key.toLowerCase();
-
-        if (
-          [
-            "arrowup",
-            "arrowleft",
-            "arrowright",
-            "w",
-            "a",
-            "d",
-            "escape"
-          ].includes(key)
-        ) {
-          event.preventDefault();
-        }
-
-        if (key === "escape") {
-          escape();
-        } else if (key === "arrowup" || key === "w") {
-          forward();
-        } else if (
-          (key === "arrowleft" || key === "a")
-          && !event.repeat
-        ) {
-          turn(-1);
-        } else if (
-          (key === "arrowright" || key === "d")
-          && !event.repeat
-        ) {
-          turn(1);
-        }
-      });
 
       window.addEventListener("resize", resize);
 
@@ -2877,6 +2867,7 @@
 
       function frame(now) {
         updateAnimation(now);
+        movementControls.update(now);
 
         if (state.dirty) {
           render();
@@ -2884,6 +2875,396 @@
         }
 
         requestAnimationFrame(frame);
+      }
+
+      function setupMovementControls() {
+        const heldKeys = new Map();
+        const heldPointers = new Map();
+
+        let order = 0;
+        let lastAttempt = -Infinity;
+        let queuedTurn = 0;
+        let drag = null;
+
+        const forwardButton = document.getElementById(
+          "forward"
+        );
+
+        const backwardButton = document.getElementById(
+          "backward"
+        );
+
+        function isPlaying() {
+          return (
+            state.started
+            && !state.completed
+            && !modal.open
+          );
+        }
+
+        function releaseCapture(element, pointerId) {
+          try {
+            if (element.hasPointerCapture(pointerId)) {
+              element.releasePointerCapture(pointerId);
+            }
+          } catch {
+            // 既に解放されている場合は何もしない。
+          }
+        }
+
+        function clear() {
+          heldKeys.clear();
+
+          const pointers = [...heldPointers.entries()];
+          heldPointers.clear();
+
+          for (const [pointerId, record] of pointers) {
+            releaseCapture(record.element, pointerId);
+          }
+
+          if (drag) {
+            const pointerId = drag.pointerId;
+            drag = null;
+            releaseCapture(canvas, pointerId);
+          }
+
+          queuedTurn = 0;
+          lastAttempt = -Infinity;
+        }
+
+        function heldDirection() {
+          let latest = null;
+
+          for (const record of heldKeys.values()) {
+            if (!latest || record.order > latest.order) {
+              latest = record;
+            }
+          }
+
+          for (const record of heldPointers.values()) {
+            if (!latest || record.order > latest.order) {
+              latest = record;
+            }
+          }
+
+          return latest ? latest.direction : 0;
+        }
+
+        function update(now) {
+          if (!isPlaying()) {
+            clear();
+            return;
+          }
+
+          if (animation !== null) {
+            return;
+          }
+
+          // 移動中に回転ボタンを押した場合は、
+          // 現在の一歩が終わってから回転する。
+          if (queuedTurn !== 0) {
+            const direction = queuedTurn;
+            queuedTurn = 0;
+            turn(direction);
+            return;
+          }
+
+          const direction = heldDirection();
+
+          if (
+            direction !== 0
+            && now - lastAttempt >= 90
+          ) {
+            lastAttempt = now;
+            move(direction, true);
+          }
+        }
+
+        function requestTurn(direction) {
+          if (!isPlaying()) {
+            return;
+          }
+
+          queuedTurn = direction;
+          update(performance.now());
+        }
+
+        function bindHoldButton(button, direction) {
+          button.addEventListener("pointerdown", (event) => {
+            if (!isPlaying()) {
+              return;
+            }
+
+            if (
+              event.pointerType === "mouse"
+              && event.button !== 0
+            ) {
+              return;
+            }
+
+            event.preventDefault();
+
+            heldPointers.set(event.pointerId, {
+              direction,
+              order: ++order,
+              element: button
+            });
+
+            button.setPointerCapture(event.pointerId);
+            lastAttempt = -Infinity;
+            update(performance.now());
+          });
+
+          function release(event) {
+            heldPointers.delete(event.pointerId);
+          }
+
+          button.addEventListener("pointerup", release);
+          button.addEventListener("pointercancel", release);
+          button.addEventListener(
+            "lostpointercapture",
+            release
+          );
+
+          /*
+           * Tabでボタンに移動してEnterを押すなど、
+           * キーボードによるクリックにも対応する。
+           *
+           * マウス・タッチのクリックはpointerdownで
+           * 処理済みなので、ここでは二重実行しない。
+           */
+          button.addEventListener("click", (event) => {
+            if (event.detail === 0 && isPlaying()) {
+              move(direction);
+            }
+          });
+
+          button.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+          });
+        }
+
+        bindHoldButton(forwardButton, 1);
+        bindHoldButton(backwardButton, -1);
+
+        document.getElementById("left-turn").addEventListener(
+          "click",
+          () => requestTurn(-1)
+        );
+
+        document.getElementById("right-turn").addEventListener(
+          "click",
+          () => requestTurn(1)
+        );
+
+        document.getElementById("escape").addEventListener(
+          "click",
+          () => {
+            clear();
+            escape();
+          }
+        );
+
+        const movementKeys = {
+          arrowup: 1,
+          w: 1,
+          arrowdown: -1,
+          s: -1
+        };
+
+        window.addEventListener("keydown", (event) => {
+          if (
+            event.ctrlKey
+            || event.metaKey
+            || event.altKey
+          ) {
+            return;
+          }
+
+          const target = event.target;
+
+          if (
+            target instanceof HTMLElement
+            && (
+              target.isContentEditable
+              || target.matches("input, textarea, select")
+            )
+          ) {
+            return;
+          }
+
+          if (!isPlaying()) {
+            return;
+          }
+
+          const key = event.key.toLowerCase();
+
+          if (Object.hasOwn(movementKeys, key)) {
+            event.preventDefault();
+
+            if (!heldKeys.has(key)) {
+              heldKeys.set(key, {
+                direction: movementKeys[key],
+                order: ++order
+              });
+
+              lastAttempt = -Infinity;
+              update(performance.now());
+            }
+
+            return;
+          }
+
+          if (key === "arrowleft" || key === "a") {
+            event.preventDefault();
+
+            if (!event.repeat) {
+              requestTurn(-1);
+            }
+          } else if (key === "arrowright" || key === "d") {
+            event.preventDefault();
+
+            if (!event.repeat) {
+              requestTurn(1);
+            }
+          } else if (key === "escape") {
+            event.preventDefault();
+            clear();
+            escape();
+          }
+        });
+
+        window.addEventListener("keyup", (event) => {
+          heldKeys.delete(event.key.toLowerCase());
+        });
+
+        function look(horizontalPixels) {
+          if (!isPlaying()) {
+            return;
+          }
+
+          queuedTurn = 0;
+
+          // ドラッグを始めたら、ボタンによる回転より優先する。
+          if (animation?.type === "turn") {
+            animation = null;
+          }
+
+          const sensitivity = 0.005;
+
+          state.yaw += horizontalPixels * sensitivity;
+
+          state.yaw = Math.atan2(
+            Math.sin(state.yaw),
+            Math.cos(state.yaw)
+          );
+
+          state.dirty = true;
+        }
+
+        canvas.addEventListener("pointerdown", (event) => {
+          if (!isPlaying() || drag !== null) {
+            return;
+          }
+
+          if (
+            event.pointerType === "mouse"
+            && event.button !== 0
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+
+          drag = {
+            pointerId: event.pointerId,
+            lastX: event.clientX
+          };
+
+          canvas.setPointerCapture(event.pointerId);
+        });
+
+        canvas.addEventListener("pointermove", (event) => {
+          if (
+            !drag
+            || event.pointerId !== drag.pointerId
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+
+          const deltaX = event.clientX - drag.lastX;
+          drag.lastX = event.clientX;
+
+          look(deltaX);
+        });
+
+        function endDrag(event) {
+          if (
+            drag
+            && event.pointerId === drag.pointerId
+          ) {
+            drag = null;
+          }
+        }
+
+        canvas.addEventListener("pointerup", endDrag);
+        canvas.addEventListener("pointercancel", endDrag);
+        canvas.addEventListener(
+          "lostpointercapture",
+          endDrag
+        );
+
+        canvas.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+        });
+
+        // PCのトラックパッドによる横スクロールにも対応。
+        canvas.addEventListener(
+          "wheel",
+          (event) => {
+            if (!isPlaying()) {
+              return;
+            }
+
+            const amount = Math.abs(event.deltaX) > 0
+              ? event.deltaX
+              : event.shiftKey
+                ? event.deltaY
+                : 0;
+
+            if (amount === 0) {
+              return;
+            }
+
+            event.preventDefault();
+
+            const unit = event.deltaMode === 1
+              ? 16
+              : event.deltaMode === 2
+                ? window.innerWidth
+                : 1;
+
+            look(amount * unit);
+          },
+          { passive: false }
+        );
+
+        window.addEventListener("blur", clear);
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            clear();
+          }
+        });
+
+        modal.addEventListener("close", clear);
+
+        return {
+          update,
+          clear
+        };
       }
 
       const expansion = createExpansion(THREE, {
@@ -2899,6 +3280,8 @@
           stairCount++;
         }
       });
+
+      const movementControls = setupMovementControls();
 
       buildAnswerButtons();
       resize();
