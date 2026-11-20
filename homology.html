@@ -191,6 +191,20 @@
       grid-row: 1;
     }
 
+    #backward {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    #forward,
+    #backward,
+    #view {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
     #left-turn {
       grid-column: 1;
       grid-row: 2;
@@ -344,6 +358,16 @@
     </button>
 
     <button
+      id="backward"
+      class="control"
+      type="button"
+      aria-label="後ろに進む"
+    >
+      ↓
+      <span>後退</span>
+    </button>
+
+    <button
       id="left-turn"
       class="control"
       type="button"
@@ -465,7 +489,7 @@
             "この空間は、折り畳み座標で表示した球面です。"
             + "\n床の青線と緑線は大円の目印であり、"
             + "空間に穴を開けているわけではありません。"
-            + "\n球面の1次ホモロジー群は0です。"
+            + "\n球面の1次の整数係数ホモロジー群は0です。"
         },
         {
           id: 6,
@@ -498,7 +522,7 @@
             "球面からG・Hの2点を除いた空間です。"
             + "\nこの空間は円周にホモトピー同値です。"
             + "\n2本の柱をそれぞれ囲むループは"
-            + "独立ではなく、1次ホモロジー群はℤです。"
+            + "独立ではなく、1次の整数係数ホモロジー群はℤです。"
         },
         {
           id: 9,
@@ -523,7 +547,7 @@
             + "\nさらに、一方の階段で別の階へ進み、"
             + "もう一方の階段で戻るループが1つできます。"
             + "\nしたがって階数は 1 + 1 + 1 = 3、"
-            + "1次ホモロジー群はℤ³です。"
+            + "1次の整数係数ホモロジー群はℤ³です。"
         },
       ];
 
@@ -2345,7 +2369,7 @@
         );
       }
 
-      function forward() {
+      function move(direction = 1, continuous = false) {
         if (!canOperate()) {
           return;
         }
@@ -2355,11 +2379,11 @@
         if (expansion.active) {
           path = expansion.planMove(
             state,
-            PLAYER.step
+            PLAYER.step * direction
           );
         } else {
-          const dx = Math.sin(state.yaw);
-          const dz = -Math.cos(state.yaw);
+          const dx = Math.sin(state.yaw) * direction;
+          const dz = -Math.cos(state.yaw) * direction;
           const samples = 65;
 
           path = [{
@@ -2398,9 +2422,17 @@
         }
 
         if (path.length < 3) {
-          showToast(
-            "壁・柱があり、これ以上は進めません。"
-          );
+          const message =
+            "壁・柱があり、これ以上は進めません。";
+
+          // 長押し中に同じ通知を連続発生させない。
+          if (
+            !toast.classList.contains("visible")
+            || toast.textContent !== message
+          ) {
+            showToast(message);
+          }
+
           return;
         }
 
@@ -2408,8 +2440,17 @@
           type: "move",
           start: performance.now(),
           duration: PLAYER.moveTime,
-          path
+          path,
+          continuous
         };
+      }
+
+      function forward() {
+        move(1);
+      }
+
+      function backward() {
+        move(-1);
       }
 
       function turn(direction) {
@@ -2436,7 +2477,10 @@
           (now - animation.start) / animation.duration
         );
 
-        const eased = t * t * (3 - 2 * t);
+        const eased =
+          animation.type === "move" && animation.continuous
+            ? t
+            : t * t * (3 - 2 * t);
 
         if (animation.type === "turn") {
           state.yaw = animation.from
@@ -2614,10 +2658,12 @@
         openDialog(
           "地下空間からの脱出",
           "あなたは地下空間に閉じ込められてしまいました。"
-            + "\n通路を探索し、整数係数の第1ホモロジー群を"
+            + "\n通路を探索し、1次の整数係数ホモロジー群を"
             + "正しく答えると脱出できます。"
-            + "\n\n↑ / W：進む"
-            + "\n← / A・→ / D：90度向きを変える"
+            + "\n\n↑ / W：前進（長押しで連続移動）"
+            + "\n↓ / S：後退（長押しで連続移動）"
+            + "\n← / A・→ / D：押している間、左右に回転"
+            + "\n画面の左右ドラッグ・スワイプ：自由に向きを変える"
             + "\nEsc：中断・ギブアップ"
             + "\n\n階段は進む操作で上り下りできます。"
             + "\nステージ⑩では、上り・下りの表示がある"
@@ -2778,7 +2824,7 @@
 
           button.setAttribute(
             "aria-label",
-            `第1ホモロジー群を ${choice.label} と回答`
+            `1次の整数係数ホモロジー群を ${choice.label} と回答`
           );
 
           button.addEventListener("click", () => answer(choice));
@@ -2800,64 +2846,6 @@
         );
       }
 
-      document.getElementById("forward").addEventListener(
-        "click",
-        forward
-      );
-
-      document.getElementById("left-turn").addEventListener(
-        "click",
-        () => turn(-1)
-      );
-
-      document.getElementById("right-turn").addEventListener(
-        "click",
-        () => turn(1)
-      );
-
-      document.getElementById("escape").addEventListener(
-        "click",
-        escape
-      );
-
-      window.addEventListener("keydown", (event) => {
-        if (modal.open) {
-          return;
-        }
-
-        const key = event.key.toLowerCase();
-
-        if (
-          [
-            "arrowup",
-            "arrowleft",
-            "arrowright",
-            "w",
-            "a",
-            "d",
-            "escape"
-          ].includes(key)
-        ) {
-          event.preventDefault();
-        }
-
-        if (key === "escape") {
-          escape();
-        } else if (key === "arrowup" || key === "w") {
-          forward();
-        } else if (
-          (key === "arrowleft" || key === "a")
-          && !event.repeat
-        ) {
-          turn(-1);
-        } else if (
-          (key === "arrowright" || key === "d")
-          && !event.repeat
-        ) {
-          turn(1);
-        }
-      });
-
       window.addEventListener("resize", resize);
 
       document.addEventListener("visibilitychange", () => {
@@ -2877,6 +2865,7 @@
 
       function frame(now) {
         updateAnimation(now);
+        movementControls.update(now);
 
         if (state.dirty) {
           render();
@@ -2884,6 +2873,454 @@
         }
 
         requestAnimationFrame(frame);
+      }
+
+      function setupMovementControls() {
+        // 1秒あたりの回転角。単位はラジアン。
+        const TURN_SPEED = 90 * Math.PI / 180;
+
+        const heldKeys = new Map();
+        const heldPointers = new Map();
+
+        let order = 0;
+        let lastAttempt = -Infinity;
+        let lastUpdate = null;
+        let drag = null;
+
+        function isPlaying() {
+          return (
+            state.started
+            && !state.completed
+            && !modal.open
+          );
+        }
+
+        function releaseCapture(element, pointerId) {
+          try {
+            if (element.hasPointerCapture(pointerId)) {
+              element.releasePointerCapture(pointerId);
+            }
+          } catch {
+            // 既に解放されている場合は何もしない。
+          }
+        }
+
+        function clear() {
+          heldKeys.clear();
+
+          const pointers = [...heldPointers.entries()];
+          heldPointers.clear();
+
+          for (const [pointerId, record] of pointers) {
+            releaseCapture(record.element, pointerId);
+          }
+
+          if (drag) {
+            const pointerId = drag.pointerId;
+            drag = null;
+            releaseCapture(canvas, pointerId);
+          }
+
+          lastAttempt = -Infinity;
+          lastUpdate = null;
+        }
+
+        /*
+         * 移動と回転を別々に判定する。
+         * 同じ種類の操作を同時に押した場合は、
+         * 後から押した方向を優先する。
+         */
+        function heldDirection(kind) {
+          let latest = null;
+
+          for (const record of heldKeys.values()) {
+            if (record.kind !== kind) {
+              continue;
+            }
+
+            if (!latest || record.order > latest.order) {
+              latest = record;
+            }
+          }
+
+          for (const record of heldPointers.values()) {
+            if (record.kind !== kind) {
+              continue;
+            }
+
+            if (!latest || record.order > latest.order) {
+              latest = record;
+            }
+          }
+
+          return latest ? latest.direction : 0;
+        }
+
+        function rotateBy(angle) {
+          if (!isPlaying()) {
+            return;
+          }
+
+          // 以前の90度回転アニメーションが残っていれば解除。
+          if (animation?.type === "turn") {
+            animation = null;
+          }
+
+          state.yaw += angle;
+
+          state.yaw = Math.atan2(
+            Math.sin(state.yaw),
+            Math.cos(state.yaw)
+          );
+
+          state.dirty = true;
+        }
+
+        function update(now) {
+          if (!isPlaying()) {
+            clear();
+            return;
+          }
+
+          const elapsed = lastUpdate === null
+            ? 0
+            : Math.min(
+                0.05,
+                Math.max(0, (now - lastUpdate) / 1000)
+              );
+
+          lastUpdate = now;
+
+          /*
+           * 回転は移動アニメーション中でも行える。
+           * 押している時間に比例して角度を変える。
+           */
+          const rotation = heldDirection("turn");
+
+          if (rotation !== 0 && elapsed > 0) {
+            rotateBy(
+              rotation * TURN_SPEED * elapsed
+            );
+          }
+
+          if (animation !== null) {
+            return;
+          }
+
+          const movement = heldDirection("move");
+
+          if (
+            movement !== 0
+            && now - lastAttempt >= 90
+          ) {
+            lastAttempt = now;
+            move(movement, true);
+          }
+        }
+
+        function bindHoldButton(button, kind, direction) {
+          button.style.touchAction = "none";
+          button.style.userSelect = "none";
+          button.style.webkitUserSelect = "none";
+          button.style.webkitTouchCallout = "none";
+
+          button.addEventListener("pointerdown", (event) => {
+            if (!isPlaying()) {
+              return;
+            }
+
+            if (
+              event.pointerType === "mouse"
+              && event.button !== 0
+            ) {
+              return;
+            }
+
+            event.preventDefault();
+
+            heldPointers.set(event.pointerId, {
+              kind,
+              direction,
+              order: ++order,
+              element: button
+            });
+
+            button.setPointerCapture(event.pointerId);
+
+            if (kind === "move") {
+              lastAttempt = -Infinity;
+            }
+
+            update(performance.now());
+          });
+
+          function release(event) {
+            heldPointers.delete(event.pointerId);
+          }
+
+          button.addEventListener("pointerup", release);
+          button.addEventListener("pointercancel", release);
+
+          button.addEventListener(
+            "lostpointercapture",
+            release
+          );
+
+          /*
+           * Tabでボタンに移動してEnterを押すなど、
+           * キーボードによるクリックにも対応する。
+           *
+           * マウス・タッチの操作はpointerイベントで
+           * 処理するため、ここでは二重実行しない。
+           */
+          button.addEventListener("click", (event) => {
+            if (event.detail !== 0 || !isPlaying()) {
+              return;
+            }
+
+            if (kind === "move") {
+              move(direction);
+            } else {
+              rotateBy(
+                direction * 15 * Math.PI / 180
+              );
+            }
+          });
+
+          button.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+          });
+        }
+
+        bindHoldButton(
+          document.getElementById("forward"),
+          "move",
+          1
+        );
+
+        bindHoldButton(
+          document.getElementById("backward"),
+          "move",
+          -1
+        );
+
+        bindHoldButton(
+          document.getElementById("left-turn"),
+          "turn",
+          -1
+        );
+
+        bindHoldButton(
+          document.getElementById("right-turn"),
+          "turn",
+          1
+        );
+
+        document.getElementById("escape").addEventListener(
+          "click",
+          () => {
+            clear();
+            escape();
+          }
+        );
+
+        const movementKeys = {
+          arrowup: 1,
+          w: 1,
+          arrowdown: -1,
+          s: -1
+        };
+
+        const rotationKeys = {
+          arrowleft: -1,
+          a: -1,
+          arrowright: 1,
+          d: 1
+        };
+
+        window.addEventListener("keydown", (event) => {
+          if (
+            event.ctrlKey
+            || event.metaKey
+            || event.altKey
+          ) {
+            return;
+          }
+
+          const target = event.target;
+
+          if (
+            target instanceof HTMLElement
+            && (
+              target.isContentEditable
+              || target.matches("input, textarea, select")
+            )
+          ) {
+            return;
+          }
+
+          if (!isPlaying()) {
+            return;
+          }
+
+          const key = event.key.toLowerCase();
+
+          if (key === "escape") {
+            event.preventDefault();
+            clear();
+            escape();
+            return;
+          }
+
+          let kind;
+          let direction;
+
+          if (Object.hasOwn(movementKeys, key)) {
+            kind = "move";
+            direction = movementKeys[key];
+          } else if (Object.hasOwn(rotationKeys, key)) {
+            kind = "turn";
+            direction = rotationKeys[key];
+          } else {
+            return;
+          }
+
+          event.preventDefault();
+
+          // キーリピートでは再登録しない。
+          if (!heldKeys.has(key)) {
+            heldKeys.set(key, {
+              kind,
+              direction,
+              order: ++order
+            });
+
+            if (kind === "move") {
+              lastAttempt = -Infinity;
+            }
+
+            update(performance.now());
+          }
+        });
+
+        window.addEventListener("keyup", (event) => {
+          heldKeys.delete(event.key.toLowerCase());
+        });
+
+        function look(horizontalPixels) {
+          const sensitivity = 0.005;
+          rotateBy(horizontalPixels * sensitivity);
+        }
+
+        canvas.addEventListener("pointerdown", (event) => {
+          if (!isPlaying() || drag !== null) {
+            return;
+          }
+
+          if (
+            event.pointerType === "mouse"
+            && event.button !== 0
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+
+          drag = {
+            pointerId: event.pointerId,
+            lastX: event.clientX
+          };
+
+          canvas.setPointerCapture(event.pointerId);
+        });
+
+        canvas.addEventListener("pointermove", (event) => {
+          if (
+            !drag
+            || event.pointerId !== drag.pointerId
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+
+          const deltaX = event.clientX - drag.lastX;
+          drag.lastX = event.clientX;
+
+          // 指による操作だけ左右を反転。
+          // マウスドラッグは従来どおり。
+          const direction = event.pointerType === "touch"
+            ? -1
+            : 1;
+
+          look(deltaX * direction);
+        });
+
+        function endDrag(event) {
+          if (
+            drag
+            && event.pointerId === drag.pointerId
+          ) {
+            drag = null;
+          }
+        }
+
+        canvas.addEventListener("pointerup", endDrag);
+        canvas.addEventListener("pointercancel", endDrag);
+
+        canvas.addEventListener(
+          "lostpointercapture",
+          endDrag
+        );
+
+        canvas.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+        });
+
+        canvas.addEventListener(
+          "wheel",
+          (event) => {
+            if (!isPlaying()) {
+              return;
+            }
+
+            const amount = Math.abs(event.deltaX) > 0
+              ? event.deltaX
+              : event.shiftKey
+                ? event.deltaY
+                : 0;
+
+            if (amount === 0) {
+              return;
+            }
+
+            event.preventDefault();
+
+            const unit = event.deltaMode === 1
+              ? 16
+              : event.deltaMode === 2
+                ? window.innerWidth
+                : 1;
+
+            look(amount * unit);
+          },
+          { passive: false }
+        );
+
+        window.addEventListener("blur", clear);
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            clear();
+          }
+        });
+
+        modal.addEventListener("close", clear);
+
+        return {
+          update,
+          clear
+        };
       }
 
       const expansion = createExpansion(THREE, {
@@ -2899,6 +3336,8 @@
           stairCount++;
         }
       });
+
+      const movementControls = setupMovementControls();
 
       buildAnswerButtons();
       resize();
