@@ -7,6 +7,13 @@ export function createExpansion(THREE, api) {
   const ROOM_HEIGHT = 2.9;
   const PLAYER_RADIUS = 0.16;
   const DRAW_RADIUS = 110;
+  
+  const HORIZONTAL_SCALE = 3;
+
+  const SHAFT_HALF_X = 1.4;
+  const SHAFT_HALF_Z = 1.65;
+  const SHAFT_DOOR_HALF = 0.55;
+  const SHAFT_GATE_X = SHAFT_HALF_X - 0.08;
 
   const COLORS = {
     blue: "#236bc2",
@@ -16,6 +23,7 @@ export function createExpansion(THREE, api) {
   };
 
   const root = new THREE.Group();
+  root.scale.set(HORIZONTAL_SCALE, 1, HORIZONTAL_SCALE);
   api.scene.add(root);
 
   let enabled = false;
@@ -34,7 +42,10 @@ export function createExpansion(THREE, api) {
 
   let stairGroup = null;
   let stairTrip = null;
-  let portalCooldown = false;
+
+  let pendingEntrance = null;
+  let stairDoorSide = -1;
+  let shaftVisuals = [];
 
   const connections = [
     {
@@ -101,7 +112,10 @@ export function createExpansion(THREE, api) {
     textMaterials = new Map();
     stairGroup = null;
     stairTrip = null;
-    portalCooldown = false;
+
+    pendingEntrance = null;
+    stairDoorSide = -1;
+    shaftVisuals = [];
   }
 
   function material(color, extra = {}) {
@@ -369,24 +383,88 @@ export function createExpansion(THREE, api) {
     return texture;
   }
 
+  function makeSurfaceFloorGeometry() {
+    if (stageNumber !== 10) {
+      return new THREE.PlaneGeometry(
+        DRAW_RADIUS * 2,
+        DRAW_RADIUS * 2
+      );
+    }
+
+    const shape = new THREE.Shape();
+
+    shape.moveTo(-DRAW_RADIUS, -DRAW_RADIUS);
+    shape.lineTo(DRAW_RADIUS, -DRAW_RADIUS);
+    shape.lineTo(DRAW_RADIUS, DRAW_RADIUS);
+    shape.lineTo(-DRAW_RADIUS, DRAW_RADIUS);
+    shape.closePath();
+
+    /*
+     * 各階の階段室の領域を床から除く。
+     *
+     * 周期表示上は複数見えるが、
+     * 球面の同一視を考慮すると各階に2つの穴。
+     */
+    repeatPositions(connections, (x, z) => {
+      if (
+        Math.abs(x) + SHAFT_HALF_X >= DRAW_RADIUS
+        || Math.abs(z) + SHAFT_HALF_Z >= DRAW_RADIUS
+      ) {
+        return;
+      }
+
+      // 平面を横に寝かせるため、local-y = -world-z。
+      const y = -z;
+      const hole = new THREE.Path();
+
+      hole.moveTo(
+        x - SHAFT_HALF_X,
+        y - SHAFT_HALF_Z
+      );
+
+      hole.lineTo(
+        x - SHAFT_HALF_X,
+        y + SHAFT_HALF_Z
+      );
+
+      hole.lineTo(
+        x + SHAFT_HALF_X,
+        y + SHAFT_HALF_Z
+      );
+
+      hole.lineTo(
+        x + SHAFT_HALF_X,
+        y - SHAFT_HALF_Z
+      );
+
+      hole.closePath();
+      shape.holes.push(hole);
+    });
+
+    return new THREE.ShapeGeometry(shape);
+  }
+
   function makeLayer(index, horizontalColor, verticalColor) {
     const group = new THREE.Group();
     group.position.y = index * FLOOR_GAP;
     root.add(group);
     layers[index] = group;
 
-    const geometry = new THREE.PlaneGeometry(
-      DRAW_RADIUS * 2,
-      DRAW_RADIUS * 2
-    );
-
+    const geometry = makeSurfaceFloorGeometry();
     const positions = geometry.getAttribute("position");
+
+    if (!geometry.getAttribute("uv")) {
+      geometry.setAttribute(
+        "uv",
+        new THREE.BufferAttribute(
+          new Float32Array(positions.count * 2),
+          2
+        )
+      );
+    }
+
     const uvs = geometry.getAttribute("uv");
 
-    /*
-     * UVを世界座標に固定する。
-     * 床を回転すると local-y が world-z の負方向になる。
-     */
     for (let i = 0; i < positions.count; i++) {
       uvs.setXY(
         i,
@@ -609,16 +687,270 @@ export function createExpansion(THREE, api) {
     }
   }
 
+  /*
+   * 繰り返し表示する階段室の描画負荷を抑えるため、
+   * 同じ材質の静的メッシュをまとめる。
+   */
+  function compactStaticGroup(source) {
+    source.updateMatrixWorld(true);
+
+    const batches = new Map();
+    const oldGeometries = new Set();
+
+    source.traverse((object) => {
+      if (!object.isMesh) {
+        return;
+      }
+
+      oldGeometries.add(object.geometry);
+
+      const geometry = object.geometry.index
+        ? object.geometry.toNonIndexed()
+        : object.geometry.clone();
+
+      geometry.applyMatrix4(object.matrixWorld);
+
+      const positions = geometry.getAttribute("position");
+      const uvs = geometry.getAttribute("uv");
+
+      if (!batches.has(object.material)) {
+        batches.set(object.material, {
+          positions: [],
+          uvs: []
+        });
+      }
+
+      const batch = batches.get(object.material);
+
+      for (let i = 0; i < positions.count; i++) {
+        batch.positions.push(
+          positions.getX(i),
+          positions.getY(i),
+          positions.getZ(i)
+        );
+
+        batch.uvs.push(
+          uvs ? uvs.getX(i) : 0,
+          uvs ? uvs.getY(i) : 0
+        );
+      }
+
+      geometry.dispose();
+    });
+
+    const result = new THREE.Group();
+
+    for (const [mat, batch] of batches) {
+      const geometry = new THREE.BufferGeometry();
+
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+          batch.positions,
+          3
+        )
+      );
+
+      geometry.setAttribute(
+        "uv",
+        new THREE.Float32BufferAttribute(
+          batch.uvs,
+          2
+        )
+      );
+
+      geometry.computeBoundingSphere();
+
+      result.add(new THREE.Mesh(geometry, mat));
+    }
+
+    for (const geometry of oldGeometries) {
+      geometry.dispose();
+    }
+
+    return result;
+  }
+
+  function makeEntrancePrototype(letter, descending) {
+    const group = new THREE.Group();
+
+    const wallMat = material("#b4beb5");
+    const stepMat = material("#87968c");
+    const edgeMat = material("#425b64");
+    const darkMat = material("#263b40");
+
+    const doorTop = 2.35;
+    const thickness = 0.10;
+
+    // 通路に平行な2面。
+    for (const z of [-SHAFT_HALF_Z, SHAFT_HALF_Z]) {
+      box(
+        group,
+        0,
+        ROOM_HEIGHT / 2,
+        z,
+        SHAFT_HALF_X * 2,
+        ROOM_HEIGHT,
+        thickness,
+        wallMat
+      );
+    }
+
+    /*
+     * 両側の入口は、球面の半回転同一視による
+     * 同じ入口の2つの座標表示。
+     */
+    for (const side of [-1, 1]) {
+      const x = side * SHAFT_HALF_X;
+
+      for (const zSide of [-1, 1]) {
+        box(
+          group,
+          x,
+          ROOM_HEIGHT / 2,
+          zSide * (
+            SHAFT_HALF_Z + SHAFT_DOOR_HALF
+          ) / 2,
+          thickness,
+          ROOM_HEIGHT,
+          SHAFT_HALF_Z - SHAFT_DOOR_HALF,
+          wallMat
+        );
+      }
+
+      // 入口の上の壁。
+      box(
+        group,
+        x,
+        (doorTop + ROOM_HEIGHT) / 2,
+        0,
+        thickness,
+        ROOM_HEIGHT - doorTop,
+        SHAFT_DOOR_HALF * 2,
+        wallMat
+      );
+
+      // 入口直後の短い平らな床。
+      box(
+        group,
+        side * (SHAFT_HALF_X - 0.16),
+        -0.07,
+        0,
+        0.32,
+        0.14,
+        SHAFT_DOOR_HALF * 2,
+        stepMat
+      );
+
+      // 外から見える階段の最初の数段。
+      const count = 6;
+      const run = SHAFT_HALF_X - 0.38;
+
+      for (let i = 0; i < count; i++) {
+        const top = (i + 1) * 0.12
+          * (descending ? -1 : 1);
+
+        const stepX = side * (
+          SHAFT_HALF_X
+          - 0.32
+          - (i + 0.5) * run / count
+        );
+
+        box(
+          group,
+          stepX,
+          top - 0.09,
+          0,
+          run / count + 0.01,
+          0.18,
+          SHAFT_DOOR_HALF * 2,
+          stepMat
+        );
+
+        box(
+          group,
+          side * (
+            SHAFT_HALF_X
+            - 0.32
+            - i * run / count
+          ),
+          top + 0.004,
+          0,
+          0.025,
+          0.012,
+          SHAFT_DOOR_HALF * 2,
+          edgeMat
+        );
+      }
+
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(
+          0.9 / HORIZONTAL_SCALE,
+          0.44
+        ),
+        textMaterial(
+          `${letter}\n${descending ? "下り" : "上り"}`
+        )
+      );
+
+      label.position.set(
+        side * (SHAFT_HALF_X + 0.055),
+        2.61,
+        0
+      );
+
+      label.rotation.y = side * Math.PI / 2;
+      group.add(label);
+    }
+
+    // 階段室の内部を奥まで透かして見せないための壁。
+    box(
+      group,
+      0,
+      (ROOM_HEIGHT - 0.9) / 2,
+      0,
+      0.10,
+      ROOM_HEIGHT + 0.9,
+      SHAFT_HALF_Z * 2,
+      darkMat
+    );
+
+    // 上面は歩行面として登録しない。
+    box(
+      group,
+      0,
+      ROOM_HEIGHT - 0.04,
+      0,
+      SHAFT_HALF_X * 2,
+      0.08,
+      SHAFT_HALF_Z * 2,
+      wallMat
+    );
+
+    return compactStaticGroup(group);
+  }
+
   function addPortal(group, letter, point) {
     registerLetter(letter);
 
-    floorCopies(
-      group,
-      [point],
-      `${letter}\n階段`,
-      1.30,
-      1.15
+    const descending = group === layers[1];
+    const prototype = makeEntrancePrototype(
+      letter,
+      descending
     );
+
+    repeatPositions([point], (x, z) => {
+      const entrance = prototype.clone(true);
+      entrance.position.set(x, 0, z);
+      group.add(entrance);
+
+      shaftVisuals.push({
+        object: entrance,
+        parent: group,
+        x,
+        z
+      });
+    });
   }
 
   /*
@@ -900,9 +1232,70 @@ export function createExpansion(THREE, api) {
     return true;
   }
 
+  function checkShaftMovement(x, z, moveX) {
+    for (let index = 0; index < connections.length; index++) {
+      const connection = connections[index];
+
+      const dx = wrap(
+        x - connection.x,
+        periodX
+      );
+
+      const dz = wrap(
+        z - connection.z,
+        periodZ
+      );
+
+      const ax = Math.abs(dx);
+      const az = Math.abs(dz);
+
+      if (
+        ax > SHAFT_HALF_X + PLAYER_RADIUS
+        || az > SHAFT_HALF_Z + PLAYER_RADIUS
+      ) {
+        continue;
+      }
+
+      const insideDoorWidth =
+        az <= SHAFT_DOOR_HALF - PLAYER_RADIUS;
+
+      if (insideDoorWidth) {
+        // 入口の外側から、敷居までは進める。
+        if (ax > SHAFT_GATE_X) {
+          continue;
+        }
+
+        // 敷居を内向きにまたいだ場合だけ階段へ入る。
+        if (
+          ax >= SHAFT_GATE_X - 0.04
+          && dx * moveX < 0
+        ) {
+          return {
+            blocked: false,
+            entrance: index,
+            side: dx >= 0 ? 1 : -1
+          };
+        }
+      }
+
+      // 入口以外から階段室の領域には入れない。
+      return {
+        blocked: true,
+        entrance: null
+      };
+    }
+
+    return {
+      blocked: false,
+      entrance: null
+    };
+  }
+
   function planMove(state, distance) {
     const dx = Math.sin(state.yaw);
     const dz = -Math.cos(state.yaw);
+
+    pendingEntrance = null;
 
     const path = [{
       x: state.x,
@@ -931,26 +1324,53 @@ export function createExpansion(THREE, api) {
           foot: stairHeight(z),
           floor: state.floor
         });
-      } else {
-        if (!canStandSurface(x, z)) {
+
+        continue;
+      }
+
+      if (!canStandSurface(x, z)) {
+        break;
+      }
+
+      let contact = null;
+
+      if (stageNumber === 10) {
+        contact = checkShaftMovement(x, z, dx);
+
+        if (contact.blocked) {
           break;
         }
+      }
 
-        path.push({
-          x,
-          z,
-          foot: level * FLOOR_GAP,
-          floor: level === 1 ? "2F" : "1F"
-        });
+      path.push({
+        x,
+        z,
+        foot: level * FLOOR_GAP,
+        floor: level === 1 ? "2F" : "1F"
+      });
+
+      if (
+        contact
+        && contact.entrance !== null
+      ) {
+        pendingEntrance = {
+          index: contact.entrance,
+          side: contact.side
+        };
+
+        break;
       }
     }
 
     return path;
   }
 
-  function enterStair(state, index) {
+  function enterStair(state, index, side) {
     const connection = connections[index];
+
     stairTrip = index;
+    stairDoorSide = side;
+    pendingEntrance = null;
 
     state.x = 0;
     state.z = level === 1 ? -9.2 : 1.2;
@@ -967,18 +1387,19 @@ export function createExpansion(THREE, api) {
 
   function leaveStair(state, destinationLevel) {
     const connection = connections[stairTrip];
+    const side = stairDoorSide;
 
     level = destinationLevel;
     stairTrip = null;
-    portalCooldown = true;
+    pendingEntrance = null;
 
-    // 接続点の脇へ出て、接続点から離れる向きを向く。
-    const outward = connection.x > 0 ? -1 : 1;
+    // 相手側の入口の外へ出る。
+    state.x = connection.x
+      + side * (SHAFT_HALF_X + 0.65);
 
-    state.x = connection.x + outward * 1.9;
     state.z = connection.z;
     state.foot = level * FLOOR_GAP;
-    state.yaw = outward > 0 ? Math.PI / 2 : -Math.PI / 2;
+    state.yaw = side > 0 ? Math.PI / 2 : -Math.PI / 2;
     state.floor = level === 1 ? "2F" : "1F";
 
     normalize(state);
@@ -987,7 +1408,7 @@ export function createExpansion(THREE, api) {
       ? connection.upper
       : connection.lower;
 
-    api.notify(`${letter} の地点に着きました。`);
+    api.notify(`${letter} の入口から出ました。`);
   }
 
   function settle(state) {
@@ -1007,32 +1428,18 @@ export function createExpansion(THREE, api) {
 
     normalize(state);
 
-    if (stageNumber !== 10) {
-      return;
-    }
+    if (
+      stageNumber === 10
+      && pendingEntrance !== null
+    ) {
+      const entrance = pendingEntrance;
+      pendingEntrance = null;
 
-    const distances = connections.map((connection) => {
-      return periodicDistance(
-        state.x,
-        state.z,
-        connection
+      enterStair(
+        state,
+        entrance.index,
+        entrance.side
       );
-    });
-
-    if (portalCooldown) {
-      if (Math.min(...distances) > 1.5) {
-        portalCooldown = false;
-      }
-
-      return;
-    }
-
-    const index = distances.findIndex(
-      (distance) => distance < 0.65
-    );
-
-    if (index !== -1) {
-      enterStair(state, index);
     }
   }
 
@@ -1050,6 +1457,15 @@ export function createExpansion(THREE, api) {
       stairGroup.visible = stairTrip !== null;
     }
 
+    for (const visual of shaftVisuals) {
+      const dx = visual.x - state.x;
+      const dz = visual.z - state.z;
+
+      visual.object.visible =
+        visual.parent.visible
+        && dx * dx + dz * dz < 70 * 70;
+    }
+
     if (stairTrip !== null) {
       return;
     }
@@ -1062,10 +1478,6 @@ export function createExpansion(THREE, api) {
         label.parent.visible
         && dx * dx + dz * dz < 65 * 65;
 
-      /*
-       * 文字だけは読みやすい向きにする。
-       * 路線の矢印は床テクスチャに固定されている。
-       */
       label.mesh.rotation.set(
         -Math.PI / 2,
         0,
@@ -1076,6 +1488,7 @@ export function createExpansion(THREE, api) {
     for (const label of pillarLabels) {
       const dx = state.x - label.x;
       const dz = state.z - label.z;
+
       const distance = Math.max(
         0.001,
         Math.hypot(dx, dz)
@@ -1091,6 +1504,13 @@ export function createExpansion(THREE, api) {
       );
 
       label.mesh.rotation.y = Math.atan2(dx, dz);
+
+      // 縦の看板は、横方向だけに引き伸ばされないよう補正。
+      label.mesh.scale.set(
+        1 / HORIZONTAL_SCALE,
+        1,
+        1
+      );
     }
   }
 
@@ -1339,6 +1759,9 @@ export function createExpansion(THREE, api) {
   return {
     get active() {
       return enabled;
+    },
+    get horizontalScale() {
+      return enabled ? HORIZONTAL_SCALE : 1;
     },
     reset,
     build,
