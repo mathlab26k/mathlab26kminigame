@@ -1,4 +1,4 @@
-<!-- File: sequent-game-unified-v5.html -->
+<!-- File: sequent-game-unified-v6.html -->
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -176,6 +176,12 @@
       overflow-x: auto;
     }
 
+    /* 証明図が横に長くなっても折り返さず、証明エリア内だけで横スクロールさせる */
+    #tree {
+      width: max-content;
+      min-width: 100%;
+    }
+
     #palette h2.sub {
       margin-top: 16px;
     }
@@ -300,7 +306,8 @@
       border-radius: 8px;
       font-family: "Cambria Math", "STIX Two Math", serif;
       font-size: 16px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      white-space: nowrap;
     }
 
     .goal.open {
@@ -640,7 +647,7 @@
       <h2>制限時間</h2>
       <select id="timeSel">
         <option value="300" selected>5分</option>
-        <option value="900">15分</option>
+        <option value="1200">20分</option>
         <option value="0">無制限（練習）</option>
       </select>
       <small style="color:var(--muted)">（モードを切り替えると推奨の時間に変わります）</small>
@@ -659,13 +666,13 @@
             <code>0 + y = y</code>、変数 = <code>y</code>。<code>P</code> には他の自由変数（パラメータ）を含めても構いません。
           </li>
           <li>定理を1つ証明するたびに、それが<b>補題としてライブラリに追加</b>されます。難しい定理は、先に補題を作ってから挑みましょう。</li>
-          <li>左辺が散らかったら、<code>弱化</code> ブロックで不要な式を捨てられます。</li>
+          <li>左辺・右辺が散らかったら、<code>弱化(左)</code> / <code>弱化(右)</code> ブロックで不要な式を捨てられます（右辺の弱化は LK と1階述語論理のみ）。</li>
           <li>ルールブロックをクリックして選び、適用したい式（チップ）をクリックします。ドラッグ＆ドロップも使えます。</li>
           <li><code>Id</code>、<code>⊥L</code>、<code>Refl</code> はゴール全体に適用します。適用先が1つだけなら、ゴールをクリックするだけで済みます。</li>
           <li><code>∀L</code> と <code>∃R</code> は項の入力が必要です。<code>∀R</code> と <code>∃L</code> は新しい変数を自動で選びます。</li>
           <li>書き換え <code>=→</code> / <code>=←</code> は2回クリックします。先に左辺の等式 <code>s = t</code> を選び、次に書き換えたい式を選びます。</li>
           <li><code>✕</code> でその手とその下の部分を取り消せます。Escキーで選択を解除できます。</li>
-          <li>1階述語論理モードでは「自動整理」（可逆な手と閉じる手を自動で打つ、−3点）が使えます。命題論理モードでは自動整理は使えず、代わりに「ヒント」（正しい次の一手を自動適用、−5点）が使えます。</li>
+          <li>1階述語論理モードでは「自動整理」（可逆な手と閉じる手を自動で打つ）が使えます。命題論理モードでは自動整理は使えず、代わりに「ヒント」（正しい次の一手を自動適用、−5点）が使えます。</li>
         </ol>
       </details>
       <details>
@@ -681,7 +688,8 @@
           →R: Γ, A ⊢ B, Δ から Γ ⊢ A→B, Δ<br>
           →L (LK): Γ ⊢ A, Δ と Γ, B ⊢ Δ から Γ, A→B ⊢ Δ<br>
           →L (LJ, LM): Γ, A→B ⊢ A と Γ, B ⊢ C から Γ, A→B ⊢ C<br>
-          弱化: Γ ⊢ Δ から Γ, A ⊢ Δ（左辺の式を捨てる）<br>
+          弱化(左): Γ ⊢ Δ から Γ, A ⊢ Δ（左辺の式を捨てる）<br>
+          弱化(右): Γ ⊢ Δ から Γ ⊢ A, Δ（右辺の式を捨てる。LK・1階述語論理のみ）<br>
           公理の導入: Γ, A ⊢ Δ から Γ ⊢ Δ （A は公理・補題・スキーマのインスタンス）<br>
           <br>
           【公理・補題のインスタンス】<br>
@@ -720,7 +728,7 @@
       <div id="theorem"></div>
       <div style="text-align:center">
         <button id="btnHint">ヒント (-5点)</button>
-        <button id="btnAuto">自動整理 (-3点)</button>
+        <button id="btnAuto">自動整理</button>
         <button id="btnReset">この問題をやり直す</button>
         <button id="btnSkip">スキップ</button>
         <button id="btnQuit">終了</button>
@@ -1268,13 +1276,14 @@
       '(p -> q) | (p -> r) -> (p -> q | r)'
     ];
 
+    // 右辺の弱化(wkR)は右辺に複数の式を置ける LK と1階述語論理のみで使える
     const PROP_RULES = {
-      LK: ['id', 'botL', 'andR', 'andL', 'orR', 'orL', 'impR', 'impL', 'wkL'],
+      LK: ['id', 'botL', 'andR', 'andL', 'orR', 'orL', 'impR', 'impL', 'wkL', 'wkR'],
       LJ: ['id', 'botL', 'andR', 'andL', 'orR1', 'orR2', 'orL', 'impR', 'impL', 'wkL'],
       LM: ['id', 'andR', 'andL', 'orR1', 'orR2', 'orL', 'impR', 'impL', 'wkL']
     };
     const FOL_RULES = ['id', 'botL', 'refl', 'andR', 'andL', 'orR', 'orL', 'impR', 'impL',
-      'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL'];
+      'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL', 'wkR'];
 
     const THEORIES = {
       LK: {
@@ -1388,11 +1397,11 @@
         theorems: [
           ['all x. x + 0 = x', 5],
           ['S(0) + S(0) = S(S(0))', 10],
-          ['S(S(0)) * S(S(0)) = S(S(S(S(0))))', 15],
           ['all x. (x = 0 | ex y. x = S(y))', 20],
           ['all x. 0 + x = x', 25],
-          ['all x. all y. S(x) + y = S(x + y)', 30],
+          ['S(S(0)) * S(S(0)) = S(S(S(S(0))))', 30],
           ['all x. all y. x + y = y + x', 40],
+          ['all x. all y. all z. (x + y) + z = x + (y + z)', 40],
           ['all x. all y. x * y = y * x', 50],
           ['all x. all y. all z. (x + y) * z = x * z + y * z', 50],
         ]
@@ -1477,11 +1486,12 @@
       exL: { label: '∃L', cls: 'c-ex', side: 'L', conn: 'ex', desc: '存在する対象に新しい変数 y を名付ける' },
       rwF: { label: '=→', cls: 'c-eq', side: 'rw', desc: '等式 s=t で s を t に書換' },
       rwB: { label: '=←', cls: 'c-eq', side: 'rw', desc: '等式 s=t で t を s に書換' },
-      wkL: { label: '弱化', cls: 'c-wk', side: 'L', conn: null, desc: '左辺の式を捨てる（整理用）' },
+      wkL: { label: '弱化(左)', cls: 'c-wk', side: 'L', conn: null, desc: '左辺の式を捨てる（整理用）' },
+      wkR: { label: '弱化(右)', cls: 'c-wk', side: 'R', conn: null, desc: '右辺の式を捨てる（整理用）' },
       ax: { label: '公理', cls: 'c-ax', side: null, desc: '公理・補題を左辺に導入' }
     };
     const RULE_ORDER = ['id', 'botL', 'refl', 'andR', 'andL', 'orR', 'orR1', 'orR2', 'orL', 'impR', 'impL',
-      'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL'];
+      'allR', 'allL', 'exR', 'exL', 'rwF', 'rwB', 'wkL', 'wkR'];
 
     const rep = (arr, i, ...xs) => [...arr.slice(0, i), ...xs, ...arr.slice(i + 1)];
     const S = (L, R) => ({ L, R });
@@ -1544,6 +1554,7 @@
 
       switch (name) {
         case 'wkL': return [S(rep(L, idx), R)];
+        case 'wkR': return [S(L, rep(R, idx))];
         case 'andR': return [S(L, rep(R, idx, f.a)), S(L, rep(R, idx, f.b))];
         case 'orR': return [S(L, rep(R, idx, f.a, f.b))];
         case 'orR1': return [S(L, rep(R, idx, f.a))];
@@ -1660,8 +1671,10 @@
       over: false,
       lib: [],
       libCount: 0,
-      lemmaCount: 0
+      lemmaCount: 0,
+      modeKey: null
     };
+    let lastResult = null;
     let dragRule = null;
     const modal = { node: null, name: null, side: null, idx: null };
     const am = { node: null, entry: null, inputs: [], last: null };
@@ -1801,6 +1814,7 @@
     function startGame() {
       const key = document.querySelector('input[name=mode]:checked').value;
       CUR = THEORIES[key];
+      state.modeKey = key;
       SIG = CUR.sig;
       LOGIC = CUR.logic;
       try {
@@ -1998,11 +2012,13 @@
         limit: state.limit,
         score: state.score
       });
+      // endGame() 内、result を作った直後
+      lastResult = result;
       $('ovTitle').textContent = title || '終了';
       const body = $('ovBody');
       body.innerHTML = '';
       body.appendChild(el('p', '', 'モード: ' + CUR.name));
-      body.appendChild(el('p', '', 'スコア: ' + state.score + ' 点 / 証明した定理: ' + state.solved.length + ' 個'));
+      body.appendChild(el('p', '', state.modeKey + 'スコア: ' + state.score + ' 点 / 証明した定理: ' + state.solved.length + ' 個'));
       const ul = el('ul');
       state.solved.forEach(s => ul.appendChild(el('li', '', '⊢ ' + fmtF(s.f) + '  (+' + s.pts + ')')));
       body.appendChild(ul);
@@ -2393,11 +2409,11 @@
         toast('自動で進められる手はありません。公理の導入・代入・書き換えを考えましょう', 'bad');
         return;
       }
-      state.penalty += 3;
+      state.penalty += 0;
       state.armed = null;
       state.pending = null;
       refreshArmed();
-      toast('自動整理しました (-3点)');
+      toast('自動整理しました');
       render();
       checkSolved();
     }
@@ -2556,7 +2572,7 @@
       r.addEventListener('change', () => {
         const k = THEORIES[r.value].kind;
         const long = ['nat', 'ring'].includes(r.value);
-        $('timeSel').value = k === 'prop' ? '300' : (long ? '900' : '900');
+        $('timeSel').value = k === 'prop' ? '300' : (long ? '1200' : '1200');
       });
     });
     document.addEventListener('keydown', e => {
@@ -2609,9 +2625,10 @@
         );
       });
 
+
       $('btnRankingResult').addEventListener('click', () => {
         // 終了したゲームの条件で開く。
-        openRanking(state.modeKey, state.limit);
+        openRanking(lastResult.modeKey, lastResult.limit);
       });
 
       $('btnRankingClose').addEventListener('click', closeRanking);
@@ -2696,7 +2713,7 @@
         option => option.value === limitValue
       );
 
-      limitSelect.value = validLimit ? limitValue : '180';
+      limitSelect.value = validLimit ? limitValue : '300';
 
       rankingView.open = true;
       $('rankingOverlay').style.display = 'flex';
