@@ -1320,14 +1320,14 @@
 
       function welcome(x, y, z, rotation, width = 2.2) {
         sign(
-          "Welcome to Shibuyama station",
+          "Welcome!!",
           x,
           y,
           z,
           rotation,
           width,
           0.26,
-          "welcome"
+          "welcome!!"
         );
       }
 
@@ -2675,6 +2675,15 @@
           ending = "\n\n次のステージは準備中です。";
         }
 
+        actions.push({
+          label: "ミニゲーム一覧へ",
+          run: () => {
+            window.location.assign(
+              "https://mathlab26k.github.io/mathlab26kminigame/"
+            );
+          }
+        });
+
         openDialog(
           `ステージ${stage.id} 脱出成功`,
           `正解！ H₁(X; ℤ) ≅ ${choice.label}`
@@ -2689,6 +2698,7 @@
         state.completed = true;
 
         const stage = STAGES[state.stage];
+
         const correct = CHOICES.find(
           (choice) => choice.id === stage.answer
         );
@@ -2707,6 +2717,14 @@
               label: "やり直す",
               primary: true,
               run: () => loadStage(state.stage)
+            },
+            {
+              label: "ミニゲーム一覧へ",
+              run: () => {
+                window.location.assign(
+                  "https://mathlab26k.github.io/mathlab26kminigame/"
+                );
+              }
             }
           ]
         );
