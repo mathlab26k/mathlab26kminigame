@@ -8,7 +8,7 @@
     name="description"
     content="5つの数学ゲームへの入口。遊びたいゲームを選んで始めましょう。"
   >
-  <title>ミニゲーム</title>
+  <title>数学ミニゲーム</title>
 
   <style>
     :root {
@@ -197,7 +197,6 @@
     <p class="eyebrow">MATH GAMES</p>
     <h1>ミニゲーム</h1>
     <p class="intro">
-      考えて、試して、数学で遊ぶ。<br>
       気になるゲームを選んでください。
     </p>
   </header>
@@ -217,68 +216,44 @@
       <p class="notice">
         「遊ぶ」を押すと、それぞれのゲームのページに移動します。
         この一覧に戻るときは、ブラウザーの「戻る」を使ってください。
-        準備中のゲームは、「開く」を押すと案内が表示されます。
       </p>
     </section>
   </main>
 
   <footer class="container">
-    ミニゲーム
+    数学ミニゲーム
   </footer>
 
   <script>
-    /*
-     * ===== ゲームの設定 =====
-     *
-     * 【①②について】
-     * 実際の公開リンクが不明なため、url は空欄にしています。
-     * 各ゲームの url の二重引用符の間に、
-     * ゲームが遊べる公開ページのリンクを貼り付けてください。
-     * 以前のファイルに登録していたリンクがあれば、ここに転記します。
-     *
-     * 【③④⑤について】
-     * 今は url を空欄のままにしてください。
-     * ボタンを押すと「準備中です」と表示されます。
-     *
-     * ゲームが完成したら、同じリポジトリにゲームのページを追加し、
-     * 対応する url に次のような相対リンクを設定できます。
-     *
-     * ③ ./sequent.html
-     * ④ ./noether.html
-     * ⑤ ./homology.html
-     *
-     * 外部で公開したゲームの完全なリンクも使用できます。
-     * リンクを登録すると、自動的に「遊ぶ」ボタンになります。
-     */
 
     const games = [
       {
         title: "正方形四目並べ",
-        description: "正方形四目並べで遊んでみよう。",
+        description: "正方形を作ったら勝ち、というルールの四目並べです。",
         status: "公開済み",
         url: "https://ccbsapi.github.io/makesquare/"
       },
       {
         title: "大学数学の20の扉",
-        description: "大学数学をテーマにした「20の扉」に挑戦。",
+        description: "Jevが思い浮かべた大学数学の定理を、20回の質問で当てるゲームです。",
         status: "公開済み",
         url: "https://theorem-detective.vercel.app/"
       },
       {
         title: "シーケント計算ゲーム",
-        description: "シーケント計算をテーマにしたゲーム。",
+        description: "群や自然数についての命題の形式的証明をしていくパズルです。",
         status: "公開済み",
         url: "./sequent-game-unified-v3.html"
       },
       {
         title: "ネーター環ゲーム",
-        description: "ネーター環をテーマにしたゲーム。",
+        description: "ネーター環のイデアルを交互に拡大していきます。極大イデアルにすると負け。",
         status: "公開済み",
         url: "./Noetherian_ring_game_revised.html"
       },
       {
         title: "ホモロジー群当て",
-        description: "ホモロジー群を当てるゲーム。",
+        description: "地下空間の1次元ホモロジー群を当てると脱出できます。",
         status: "公開済み",
         url: "./homology.html"
       }
