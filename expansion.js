@@ -43,6 +43,8 @@ export function createExpansion(THREE, api) {
   let stairGroup = null;
   let stairTrip = null;
 
+  let travelSign = 1;
+
   let pendingEntrance = null;
   let stairDoorSide = -1;
   let shaftVisuals = [];
@@ -112,6 +114,8 @@ export function createExpansion(THREE, api) {
     textMaterials = new Map();
     stairGroup = null;
     stairTrip = null;
+
+    travelSign = 1;
 
     pendingEntrance = null;
     stairDoorSide = -1;
@@ -1292,8 +1296,10 @@ export function createExpansion(THREE, api) {
   }
 
   function planMove(state, distance) {
-    const dx = Math.sin(state.yaw);
-    const dz = -Math.cos(state.yaw);
+    travelSign = distance < 0 ? -1 : 1;
+
+    const dx = Math.sin(state.yaw) * travelSign;
+    const dz = -Math.cos(state.yaw) * travelSign;
 
     pendingEntrance = null;
 
@@ -1305,7 +1311,7 @@ export function createExpansion(THREE, api) {
     }];
 
     for (let i = 1; i <= 65; i++) {
-      const d = distance * i / 65;
+      const d = Math.abs(distance) * i / 65;
       const x = state.x + dx * d;
       const z = state.z + dz * d;
 
@@ -1375,7 +1381,9 @@ export function createExpansion(THREE, api) {
     state.x = 0;
     state.z = level === 1 ? -9.2 : 1.2;
     state.foot = level * FLOOR_GAP;
-    state.yaw = level === 1 ? Math.PI : 0;
+    state.yaw =
+      (level === 1 ? Math.PI : 0)
+      + (travelSign < 0 ? Math.PI : 0);
 
     state.floor =
       `階段 ${connection.upper} ↔ ${connection.lower}`;
@@ -1399,7 +1407,9 @@ export function createExpansion(THREE, api) {
 
     state.z = connection.z;
     state.foot = level * FLOOR_GAP;
-    state.yaw = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+    state.yaw =
+      (side > 0 ? Math.PI / 2 : -Math.PI / 2)
+      + (travelSign < 0 ? Math.PI : 0);
     state.floor = level === 1 ? "2F" : "1F";
 
     normalize(state);
