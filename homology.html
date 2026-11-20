@@ -8,7 +8,7 @@
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
   <meta name="theme-color" content="#172229">
-  <title>渋山駅 — ホモロジー群当てゲーム</title>
+  <title>ホモロジー群当てゲーム</title>
 
   <style>
     :root {
@@ -313,7 +313,7 @@
 <body>
   <canvas
     id="view"
-    aria-label="渋山駅の地下通路。一人称視点の探索画面"
+    aria-label="地下空間。一人称視点の探索画面"
   ></canvas>
 
   <button id="escape" type="button">
@@ -321,8 +321,8 @@
   </button>
 
   <div id="status">
-    <strong id="stage-number">SHIBUYAMA STATION</strong>
-    <span id="floor-number">地下通路</span>
+    <strong id="stage-number">UNDERGROUND SPACE</strong>
+    <span id="floor-number">地下空間</span>
   </div>
 
   <section id="answers" aria-labelledby="answers-label">
@@ -367,7 +367,7 @@
   <div id="toast" role="status" aria-live="polite"></div>
 
   <div id="loading" role="status">
-    渋山駅を読み込んでいます…
+    読み込んでいます…
   </div>
 
   <dialog id="modal" aria-labelledby="dialog-title">
@@ -416,7 +416,6 @@
        * y = 高さ
        *
        * 整数係数の第1ホモロジー群を回答する。
-       * ステージ④以降は図面待ち。
        */
       const STAGES = [
         {
@@ -514,15 +513,18 @@
         },
         {
           id: 10,
-          answer: "Z1",
+          answer: "Z3",
           ready: true,
           explanation:
-            "それぞれの球面の第1ホモロジー群は0です。"
-            + "\n一方の階段で別の球面へ進み、"
-            + "もう一方の階段で戻ることで、"
-            + "独立なループが1つできます。"
-            + "\nしたがって第1ホモロジー群はℤです。"
-        }
+            "各階は、球面から2点を除いた空間と"
+            + "同じホモトピー型です。"
+            + "\nそのため、それぞれの階に"
+            + "独立なループが1つずつあります。"
+            + "\nさらに、一方の階段で別の階へ進み、"
+            + "もう一方の階段で戻るループが1つできます。"
+            + "\nしたがって階数は 1 + 1 + 1 = 3、"
+            + "第1ホモロジー群はℤ³です。"
+        },
       ];
 
       const CHOICES = [
@@ -605,6 +607,7 @@
       let barriers = [];
       let letters = [];
       let stairCount = 0;
+      let stairWallMode = false;
       let ownedMaterials = [];
       let ownedTextures = [];
       let animation = null;
@@ -1165,18 +1168,66 @@
 
         const half = stairWidth / 2;
 
+        let stairSideMaterial = null;
+
+        if (stairWallMode) {
+          stairSideMaterial = wallMaterial.clone();
+          stairSideMaterial.side = THREE.DoubleSide;
+          ownedMaterials.push(stairSideMaterial);
+        }
+
         for (const direction of [-1, 1]) {
-          railLine(
-            {
-              x: a.x + px * half * direction,
-              z: a.z + pz * half * direction
-            },
-            {
-              x: b.x + px * half * direction,
-              z: b.z + pz * half * direction
-            },
-            a.y,
-            b.y
+          const sideA = {
+            x: a.x + px * half * direction,
+            z: a.z + pz * half * direction
+          };
+
+          const sideB = {
+            x: b.x + px * half * direction,
+            z: b.z + pz * half * direction
+          };
+
+          if (!stairWallMode) {
+            railLine(sideA, sideB, a.y, b.y);
+            continue;
+          }
+
+          const sideHeight = 2.9;
+          const geometry = new THREE.BufferGeometry();
+
+          geometry.setAttribute(
+            "position",
+            new THREE.Float32BufferAttribute(
+              [
+                sideA.x, a.y, sideA.z,
+                sideB.x, b.y, sideB.z,
+                sideB.x, b.y + sideHeight, sideB.z,
+                sideA.x, a.y + sideHeight, sideA.z
+              ],
+              3
+            )
+          );
+
+          geometry.setIndex([
+            0, 1, 2,
+            0, 2, 3
+          ]);
+
+          geometry.computeVertexNormals();
+
+          const mesh = new THREE.Mesh(
+            geometry,
+            stairSideMaterial
+          );
+
+          world.add(mesh);
+
+          addBarrier(
+            sideA,
+            sideB,
+            (t) => a.y + (b.y - a.y) * t,
+            (t) => a.y + (b.y - a.y) * t + sideHeight,
+            0.12
           );
         }
 
@@ -1217,7 +1268,6 @@
       /*
        * ステージ①:
        * 長方形の内部に2つの通れない領域。
-       * 路線表示は一切作らない。
        */
       function buildStageOne() {
         floorRect(-6, -3, 6, 3, 0, "1F");
@@ -2472,10 +2522,10 @@
         });
 
         openDialog(
-          "渋山駅からの脱出",
-          "あなたは渋山駅の地下通路に閉じ込められてしまった。"
+          "地下空間からの脱出",
+          "あなたは地下空間に閉じ込められてしまいました。"
             + "\n通路を探索し、整数係数の第1ホモロジー群を"
-            + "正しく答えると脱出できる。"
+            + "正しく答えると脱出できます。"
             + "\n\n↑ / W：進む"
             + "\n← / A・→ / D：90度向きを変える"
             + "\nEsc：中断・ギブアップ"
@@ -2530,7 +2580,7 @@
         } else if (nextIndex === STAGES.length) {
           ending =
             "\n\n最終ステージから脱出しました。"
-            + "\n渋山駅の出口が開きました。";
+            + "\n出口が開きました。";
         } else {
           ending = "\n\n次のステージは準備中です。";
         }
