@@ -8,7 +8,7 @@ export function createExpansion(THREE, api) {
   const PLAYER_RADIUS = 0.16;
   const DRAW_RADIUS = 110;
   
-  const HORIZONTAL_SCALE = 3;
+  const HORIZONTAL_SCALE = 6;
 
   const SHAFT_HALF_X = 1.4;
   const SHAFT_HALF_Z = 1.65;
@@ -1653,6 +1653,14 @@ export function createExpansion(THREE, api) {
         centerZ + 1.25,
         middle,
         "踊り場"
+      );
+
+      ceilingRect(
+        endX,
+        centerZ - 1.25,
+        turnX,
+        centerZ + 1.25,
+        middle + 2.9
       );
 
       stairFlight(
