@@ -1,4 +1,4 @@
-<!-- File: sequent-game-unified-v6.html -->
+<!-- File: sequent-game-unified-v7.html -->
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -358,6 +358,19 @@
       background: #8a7a30;
     }
 
+    /* 等式による書き換えで、一部分だけ選べる項の出現箇所 */
+    .occ {
+      background: #2e7d32;
+      outline: 1px solid #9be29f;
+      border-radius: 4px;
+      padding: 0 2px;
+      cursor: pointer;
+    }
+
+    .occ:hover {
+      background: #43a047;
+    }
+
     .turnstile {
       color: var(--accent);
       font-weight: bold;
@@ -667,10 +680,13 @@
           </li>
           <li>定理を1つ証明するたびに、それが<b>補題としてライブラリに追加</b>されます。難しい定理は、先に補題を作ってから挑みましょう。</li>
           <li>左辺・右辺が散らかったら、<code>弱化(左)</code> / <code>弱化(右)</code> ブロックで不要な式を捨てられます（右辺の弱化は LK と1階述語論理のみ）。</li>
-          <li>ルールブロックをクリックして選び、適用したい式（チップ）をクリックします。ドラッグ＆ドロップも使えます。</li>
+          <li>ルールブロックをクリックして選び、適用したい式（チップ）をクリックします。ブロックを適用しても<b>選択は解除されない</b>ので、同じブロックを続けて使えます。解除するには、もう一度ブロックをクリックするか
+            Esc キーを押します。ドラッグ＆ドロップも使えます。</li>
           <li><code>Id</code>、<code>⊥L</code>、<code>Refl</code> はゴール全体に適用します。適用先が1つだけなら、ゴールをクリックするだけで済みます。</li>
           <li><code>∀L</code> と <code>∃R</code> は項の入力が必要です。<code>∀R</code> と <code>∃L</code> は新しい変数を自動で選びます。</li>
-          <li>書き換え <code>=→</code> / <code>=←</code> は2回クリックします。先に左辺の等式 <code>s = t</code> を選び、次に書き換えたい式を選びます。</li>
+          <li>書き換え <code>=→</code> / <code>=←</code> は2回クリックします。先に左辺の等式 <code>s = t</code>
+            を選ぶと、書き換え対象の式の中で書き換えられる項が緑色に光ります。<b>光っている項をクリックすると、その1か所だけ</b>を書き換えます。式の光っていない部分をクリックすると、従来どおりその式の<b>すべての出現</b>を書き換えます。
+          </li>
           <li><code>✕</code> でその手とその下の部分を取り消せます。Escキーで選択を解除できます。</li>
           <li>1階述語論理モードでは「自動整理」（可逆な手と閉じる手を自動で打つ）が使えます。命題論理モードでは自動整理は使えず、代わりに「ヒント」（正しい次の一手を自動適用、−5点）が使えます。</li>
         </ol>
@@ -703,7 +719,8 @@
           ∃L: Γ, A[y/x] ⊢ Δ から Γ, ∃x A ⊢ Δ （y は結論に自由に現れない）<br>
           ∀L: Γ, ∀x A, A[t/x] ⊢ Δ から Γ, ∀x A ⊢ Δ （t は任意の項）<br>
           ∃R: Γ ⊢ A[t/x], ∃x A, Δ から Γ ⊢ ∃x A, Δ （t は任意の項）<br>
-          =→ / =←（等号の置換公理）: 左辺に s = t があるとき、同じ側の式 A 内の s（または t）の出現をすべて t（または s）に置き換える。等式自身は対象外。束縛変数による捕獲は禁止<br>
+          =→ / =←（等号の置換公理）: 左辺に s = t があるとき、同じ側の式 A 内の s（または t）の出現を t（または
+          s）に置き換える。一部の出現だけを選んで置き換えることも、すべての出現をまとめて置き換えることもできる。等式自身は対象外。束縛変数による捕獲は禁止<br>
           <br>
           ※ 1階述語論理では領域は空でないので、項として使える変数名は自由です。<br>
           ※ 表示では ∀・∃・¬ は強く結合します。∀x (A ∧ B) のように、二項結合子の式は括弧で囲みます。<br>
@@ -1091,6 +1108,110 @@
       return lv < p ? '(' + s + ')' : s;
     }
 
+    // ---- fmtT / fmtF と同じ表示を、項の出現ごとにクリックできる DOM として作る ----
+    // path: 論理式の子（'a' / 'b'）をたどり、原子式の引数番号、項の引数番号と続く配列
+    // B = { match(term, bound): 書き換え可能な出現か, click(path): クリック時の処理 }
+    function tDom(t, ctx, path, bound, B) {
+      const frag = document.createDocumentFragment();
+      const inner = document.createDocumentFragment();
+      let paren = false;
+      if (t.k === 'var') {
+        inner.append(t.n);
+      } else {
+        const op = opInfo(t.n);
+        if (op && t.args.length === 2) {
+          const right = op.assoc === 'right';
+          inner.append(
+            tDom(t.args[0], right ? op.prec + 1 : op.prec, [...path, 0], bound, B),
+            ' ' + op.sym + ' ',
+            tDom(t.args[1], right ? op.prec : op.prec + 1, [...path, 1], bound, B)
+          );
+          paren = op.prec < ctx;
+        } else if (t.args.length === 0) {
+          inner.append(t.n);
+        } else {
+          inner.append(t.n + '(');
+          t.args.forEach((a, i) => {
+            if (i) inner.append(', ');
+            inner.append(tDom(a, 0, [...path, i], bound, B));
+          });
+          inner.append(')');
+        }
+      }
+      let node = inner;
+      if (B.match(t, bound)) {
+        const span = el('span', 'occ');
+        span.appendChild(inner);
+        span.addEventListener('click', e => {
+          e.stopPropagation();
+          B.click(path);
+        });
+        node = span;
+      }
+      if (paren) frag.append('(', node, ')');
+      else frag.append(node);
+      return frag;
+    }
+
+    function fDom(f, p, path, bound, B) {
+      const frag = document.createDocumentFragment();
+      const parts = document.createDocumentFragment();
+      let lv;
+      switch (f.t) {
+        case 'atom':
+          if (f.args.length === 0) {
+            parts.append(f.p); lv = 6;
+          } else if (f.p === '=' || f.p === '<') {
+            parts.append(
+              tDom(f.args[0], 0, [...path, 0], bound, B),
+              ' ' + f.p + ' ',
+              tDom(f.args[1], 0, [...path, 1], bound, B)
+            );
+            lv = 4.5;
+          } else {
+            parts.append(f.p + '(');
+            f.args.forEach((a, i) => {
+              if (i) parts.append(', ');
+              parts.append(tDom(a, 0, [...path, i], bound, B));
+            });
+            parts.append(')');
+            lv = 6;
+          }
+          break;
+        case 'bot':
+          frag.append('⊥');
+          return frag;
+        case 'imp':
+          if (isNeg(f)) {
+            parts.append('¬', fDom(f.a, 4.6, [...path, 'a'], bound, B));
+            lv = 5;
+          } else {
+            parts.append(fDom(f.a, 2, [...path, 'a'], bound, B), ' → ', fDom(f.b, 1, [...path, 'b'], bound, B));
+            lv = 1;
+          }
+          break;
+        case 'or':
+          parts.append(fDom(f.a, 2, [...path, 'a'], bound, B), ' ∨ ', fDom(f.b, 3, [...path, 'b'], bound, B));
+          lv = 2;
+          break;
+        case 'and':
+          parts.append(fDom(f.a, 3, [...path, 'a'], bound, B), ' ∧ ', fDom(f.b, 4, [...path, 'b'], bound, B));
+          lv = 3;
+          break;
+        case 'all':
+          parts.append('∀' + f.v + ' ', fDom(f.a, 4.6, [...path, 'a'], [...bound, f.v], B));
+          lv = 5;
+          break;
+        case 'ex':
+          parts.append('∃' + f.v + ' ', fDom(f.a, 4.6, [...path, 'a'], [...bound, f.v], B));
+          lv = 5;
+          break;
+      }
+      if (lv < p) frag.append('(', parts, ')');
+      else frag.append(parts);
+      return frag;
+    }
+
     function sizeF(f) {
       switch (f.t) {
         case 'atom': case 'bot': return 0;
@@ -1191,6 +1312,39 @@
           return Q(f.t, f.v, rwFormula(f.a, s, r, blocked, nb));
         }
       }
+    }
+
+    // path で指定した1か所の項だけを from から to に書き換える
+    // 失敗（位置が不正・項が一致しない・束縛変数に捕獲される）したら Error を投げる
+    function rwAtPath(f, path, from, to, blocked) {
+      const fail = msg => { throw new Error(msg || 'その位置は書き換えられません'); };
+      const goT = (t, i, bound) => {
+        if (i === path.length) {
+          if (bound.some(v => blocked.has(v))) fail('束縛変数に捕獲されるため、その位置は書き換えられません');
+          if (keyT(t) !== keyT(from)) fail('その位置に ' + fmtT(from) + ' はありません');
+          return to;
+        }
+        if (t.k !== 'fn' || typeof path[i] !== 'number' || !t.args[path[i]]) fail();
+        return Fn(t.n, t.args.map((a, j) => (j === path[i] ? goT(a, i + 1, bound) : a)));
+      };
+      const goF = (g, i, bound) => {
+        const key = path[i];
+        switch (g.t) {
+          case 'atom':
+            if (typeof key !== 'number' || !g.args[key]) fail();
+            return Atom(g.p, g.args.map((a, j) => (j === key ? goT(a, i + 1, bound) : a)));
+          case 'and': case 'or': case 'imp':
+            if (key === 'a') return Bin(g.t, goF(g.a, i + 1, bound), g.b);
+            if (key === 'b') return Bin(g.t, g.a, goF(g.b, i + 1, bound));
+            return fail();
+          case 'all': case 'ex':
+            if (key !== 'a') fail();
+            return Q(g.t, g.v, goF(g.a, i + 1, [...bound, g.v]));
+          default:
+            return fail();
+        }
+      };
+      return goF(f, 0, []);
     }
 
     // 命題変数の置換・収集（命題論理の補題用）
@@ -1354,11 +1508,9 @@
           ['~(ex x. all y. y<x)', 10],
           ['all x. all y. (x<y -> ~(x = y))', 10],
           ['all x. all y. (~(x<y) -> (x = y | y<x))', 10],
-          ['all x. all y. (~(y<x) -> (x<y | x = y))', 10],
-          ['all x. all y. (~(x<y) & ~(y<x) -> x = y)', 10],
           ['all x. all y. all z. (x<y -> y<z -> ~(z<x))', 10],
-          ['all x. all y. all z. (x<y & y<z -> ~(z = x))', 10],
-          ['(ex x. ex y. x<y) -> ex x. ex y. (x<y & ~(y<x))', 15]
+          ['all x. all y. all z. all w. ((x < y & y < z & z < w) -> x < w)', 15],
+          ['all x. all y. ((x < y & x < y) -> ~(x=x))', 15]
         ]
       },
       nat: {
@@ -1484,8 +1636,8 @@
       allL: { label: '∀L', cls: 'c-all', side: 'L', conn: 'all', desc: '代入: A[t/x] を得る（∀は残る）' },
       exR: { label: '∃R', cls: 'c-ex', side: 'R', conn: 'ex', desc: '代入: 証拠の項 t を与える' },
       exL: { label: '∃L', cls: 'c-ex', side: 'L', conn: 'ex', desc: '存在する対象に新しい変数 y を名付ける' },
-      rwF: { label: '=→', cls: 'c-eq', side: 'rw', desc: '等式 s=t で s を t に書換' },
-      rwB: { label: '=←', cls: 'c-eq', side: 'rw', desc: '等式 s=t で t を s に書換' },
+      rwF: { label: '=→', cls: 'c-eq', side: 'rw', desc: '等式 s=t で s を t に書換（一部分も可）' },
+      rwB: { label: '=←', cls: 'c-eq', side: 'rw', desc: '等式 s=t で t を s に書換（一部分も可）' },
       wkL: { label: '弱化(左)', cls: 'c-wk', side: 'L', conn: null, desc: '左辺の式を捨てる（整理用）' },
       wkR: { label: '弱化(右)', cls: 'c-wk', side: 'R', conn: null, desc: '右辺の式を捨てる（整理用）' },
       ax: { label: '公理', cls: 'c-ax', side: null, desc: '公理・補題を左辺に導入' }
@@ -1535,7 +1687,18 @@
         const from = name === 'rwF' ? s : t;
         const to = name === 'rwF' ? t : s;
         const blocked = new Set([...fvT(from, new Set()), ...fvT(to, new Set())]);
-        const nf = rwFormula(target, from, to, blocked, new Set());
+        let nf;
+        if (opts.path) {
+          // 指定した1か所だけを書き換える
+          try {
+            nf = rwAtPath(target, opts.path, from, to, blocked);
+          } catch (e) {
+            return { err: e.message };
+          }
+        } else {
+          // 式の中のすべての出現を書き換える
+          nf = rwFormula(target, from, to, blocked, new Set());
+        }
         if (keyF(nf) === keyF(target)) {
           return { err: '書き換えられる箇所がありません（' + fmtT(from) + ' が見つかりません）' };
         }
@@ -1831,6 +1994,8 @@
       state.score = 0;
       state.solved = [];
       state.over = false;
+      state.armed = null;
+      state.pending = null;
       state.lib = initLibrary();
       state.queue = buildQueue();
       $('start').style.display = 'none';
@@ -1859,10 +2024,10 @@
       loadCurrent();
     }
 
+    // ブロックの選択（state.armed）は問題が変わっても維持する
     function loadCurrent() {
       state.root = { seq: S([], [state.current.f]), rule: null, children: [] };
       state.penalty = 0;
-      state.armed = null;
       state.pending = null;
       state.locked = false;
       $('theorem').textContent = '⊢ ' + fmtF(state.current.f) + '    （' + state.current.pts + '点）';
@@ -2018,7 +2183,7 @@
       const body = $('ovBody');
       body.innerHTML = '';
       body.appendChild(el('p', '', 'モード: ' + CUR.name));
-      body.appendChild(el('p', '', state.modeKey + 'スコア: ' + state.score + ' 点 / 証明した定理: ' + state.solved.length + ' 個'));
+      body.appendChild(el('p', '', 'スコア: ' + state.score + ' 点 / 証明した定理: ' + state.solved.length + ' 個'));
       const ul = el('ul');
       state.solved.forEach(s => ul.appendChild(el('li', '', '⊢ ' + fmtF(s.f) + '  (+' + s.pts + ')')));
       body.appendChild(ul);
@@ -2084,13 +2249,13 @@
     }
 
     // ===================== ルール適用 =====================
+    // ブロックの選択（state.armed）は適用後も維持する。解除は再クリックか Esc。
     function applyRule(node, name, side, idx, opts = {}) {
       if (state.locked || state.over || node.rule) return false;
       const res = premises(node.seq, name, side, idx, opts);
       if (res.err) { toast(res.err, 'bad'); return false; }
       node.rule = { name, side, idx, detail: opts.detail || '' };
       node.children = res.map(s => ({ seq: s, rule: null, children: [] }));
-      state.armed = null;
       state.pending = null;
       refreshArmed();
       render();
@@ -2165,7 +2330,7 @@
           return;
         }
         state.pending = { node, name, eq: i };
-        toast('書き換えたい式をクリックしてください');
+        toast('光っている項をクリックすると、その1か所だけ書き換えます');
         render();
         return;
       }
@@ -2175,10 +2340,20 @@
         render();
         return;
       }
+      // 式の項以外の部分をクリックした場合は、すべての出現を書き換える
       const [s, t] = node.seq.L[p.eq].args;
-      const detail = name === 'rwF' ? fmtT(s) + ' ⇒ ' + fmtT(t) : fmtT(t) + ' ⇒ ' + fmtT(s);
+      const detail = (name === 'rwF' ? fmtT(s) + ' ⇒ ' + fmtT(t) : fmtT(t) + ' ⇒ ' + fmtT(s)) + '（全部）';
       const eq = p.eq;
       applyRule(node, name, side, i, { eq, detail });
+    }
+
+    // 選択中の等式について、指定した式の中の1か所だけを書き換える
+    function rwPart(node, side, i, path) {
+      const p = state.pending;
+      if (!p || p.node !== node) return;
+      const [s, t] = node.seq.L[p.eq].args;
+      const detail = (p.name === 'rwF' ? fmtT(s) + ' ⇒ ' + fmtT(t) : fmtT(t) + ' ⇒ ' + fmtT(s)) + '（一部）';
+      applyRule(node, p.name, side, i, { eq: p.eq, path, detail });
     }
 
     // ===================== 項の代入ダイアログ（∀L / ∃R） =====================
@@ -2469,11 +2644,33 @@
       return out;
     }
 
+    // 等式を選択済みのとき、書き換え対象の式に「一部分だけ選べる項」を埋め込んで描画する
+    function rwChipContent(node, side, i, f, p) {
+      const [s, t] = node.seq.L[p.eq].args;
+      const from = p.name === 'rwF' ? s : t;
+      const to = p.name === 'rwF' ? t : s;
+      const blocked = new Set([...fvT(from, new Set()), ...fvT(to, new Set())]);
+      const fromKey = keyT(from);
+      const B = {
+        match: (tm, bound) => keyT(tm) === fromKey && !bound.some(v => blocked.has(v)),
+        click: path => rwPart(node, side, i, path)
+      };
+      return fDom(f, 0, [], [], B);
+    }
+
     function chipsEl(node, side) {
       const frag = document.createDocumentFragment();
       const arr = side === 'L' ? node.seq.L : node.seq.R;
+      const p = state.pending;
+      const rwMode = !node.rule && !!state.armed && !!RULES[state.armed] &&
+        RULES[state.armed].side === 'rw' && !!p && p.node === node && p.name === state.armed;
       arr.forEach((f, i) => {
-        const chip = el('span', 'chip', fmtF(f));
+        const chip = el('span', 'chip');
+        if (rwMode && !(side === 'L' && i === p.eq)) {
+          chip.appendChild(rwChipContent(node, side, i, f, p));
+        } else {
+          chip.textContent = fmtF(f);
+        }
         if (!node.rule) {
           chipClasses(node, side, i, f).forEach(c => chip.classList.add(c));
           chip.addEventListener('click', e => {
