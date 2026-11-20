@@ -760,7 +760,7 @@
     <div class="box">
       <h2 id="amTitle">公理を追加</h2>
       <div id="amFormula"></div>
-      <div class="note">各欄に代入する項（または式）を入力します。空欄なら、その変数はそのまま残ります（帰納法の変数は空欄で x）。</div>
+      <div class="note">各欄に代入する項（または式）を入力します。空欄なら、その変数はそのまま残ります（帰納法の変数は空欄で x）。<code>∀</code>は</div>
       <div id="amFields"></div>
       <div id="amSug"></div>
       <div>追加される式:</div>
@@ -1291,16 +1291,17 @@
           ['結合律', 'all x. all y. all z. (x*y)*z = x*(y*z)']
         ],
         theorems: [
-          ['ex x. x = e', 6],
-          ['all x. e*x = x', 8],
+          ['ex x. x = e', 5],
+          ['all x. e*x = x', 5],
           ['all x. all y. x = y -> y = x', 10],
           ['all x. (inv(x)*x = e & e*x = x)', 10],
-          ['ex x. all y. x*y = y', 12],
-          ['all x. ex y. y*x = e', 12],
-          ['all x. all y. x = y -> inv(x) = inv(y)', 12],
-          ['all x. all y. all z. (x = y -> y = z -> x = z)', 16],
-          ['all x. all y. (inv(x)*x)*y = y', 16],
-          ['all x. all y. all z. x*y = x*z -> y = z', 30]
+          ['ex x. all y. x*y = y', 15],
+          ['all x. ex y. y*x = e', 20],
+          ['all x. all y. x = y -> inv(x) = inv(y)', 20],
+          ['all x. all y. all z. (x = y -> y = z -> x = z)', 25],
+          ['all x. all y. (inv(x)*x)*y = y', 30],
+          ['all x. all y. all z. x*y = x*z -> y = z', 40],
+          ['(all x. all y. all z. all w. (x = y | x = z | x = w | y = z | y = w | z = w)) -> (all x. all y. x * y = y * x)', 100]
         ]
       },
       graph: {
@@ -1312,15 +1313,15 @@
         ],
         theorems: [
           ['all x. ~E(x,x)', 5],
-          ['all x. all y. (E(x,y) -> E(y,x))', 8],
+          ['all x. all y. (E(x,y) -> E(y,x))', 5],
           ['(all x. ex y. E(x,y)) -> ex x. ex y. E(x,y)', 10],
-          ['(ex x. all y. E(x,y)) -> all y. ex x. E(x,y)', 12],
-          ['all x. all y. (E(x,y) -> ~(x = y))', 14],
-          ['all x. all y. ((E(x,y) -> E(y,x)) & (E(y,x) -> E(x,y)))', 14],
-          ['~(ex x. all y. E(x,y))', 16],
+          ['(ex x. all y. E(x,y)) -> all y. ex x. E(x,y)', 15],
+          ['all x. all y. (E(x,y) -> ~(x = y))', 15],
+          ['all x. all y. ((E(x,y) -> E(y,x)) & (E(y,x) -> E(x,y)))', 15],
+          ['~(ex x. all y. E(x,y))', 20],
           ['~(all x. E(x,x)) -> ex x. ~E(x,x)', 20],
-          ['(all x. ex y. E(x,y)) -> all x. ex y. ex z. (E(x,y) & E(y,z))', 24],
-          ['ex x. (E(x,x) -> all y. E(y,y))', 28]
+          ['(all x. ex y. E(x,y)) -> all x. ex y. ex z. (E(x,y) & E(y,z))', 25],
+          ['ex x. (E(x,x) -> all y. E(y,y))', 30]
         ]
       },
       order: {
@@ -1332,16 +1333,16 @@
           ['三分律', 'all x. all y. (x<y | x = y | y<x)']
         ],
         theorems: [
-          ['all x. all y. (x<y | x = y | y<x)', 6],
-          ['all x. all y. (x<y -> ~(y<x))', 14],
-          ['~(ex x. all y. y<x)', 14],
-          ['all x. all y. (x<y -> ~(x = y))', 14],
-          ['all x. all y. (~(x<y) -> (x = y | y<x))', 14],
-          ['all x. all y. (~(y<x) -> (x<y | x = y))', 16],
-          ['all x. all y. (~(x<y) & ~(y<x) -> x = y)', 18],
-          ['all x. all y. all z. (x<y -> y<z -> ~(z<x))', 24],
-          ['all x. all y. all z. (x<y & y<z -> ~(z = x))', 26],
-          ['(ex x. ex y. x<y) -> ex x. ex y. (x<y & ~(y<x))', 26]
+          ['all x. all y. (x<y | x = y | y<x)', 5],
+          ['all x. all y. (x<y -> ~(y<x))', 10],
+          ['~(ex x. all y. y<x)', 10],
+          ['all x. all y. (x<y -> ~(x = y))', 10],
+          ['all x. all y. (~(x<y) -> (x = y | y<x))', 10],
+          ['all x. all y. (~(y<x) -> (x<y | x = y))', 10],
+          ['all x. all y. (~(x<y) & ~(y<x) -> x = y)', 10],
+          ['all x. all y. all z. (x<y -> y<z -> ~(z<x))', 10],
+          ['all x. all y. all z. (x<y & y<z -> ~(z = x))', 10],
+          ['(ex x. ex y. x<y) -> ex x. ex y. (x<y & ~(y<x))', 15]
         ]
       },
       nat: {
@@ -1355,13 +1356,13 @@
         ],
         schemas: [{ name: '帰納法スキーマ' }],
         theorems: [
-          ['all x. x + 0 = x', 4],
-          ['S(0) + S(0) = S(S(0))', 14],
-          ['all x. (x = 0 | ex y. x = S(y))', 24],
-          ['all x. 0 + x = x', 26],
-          ['all x. ~(x = S(x))', 26],
+          ['all x. x + 0 = x', 5],
+          ['S(0) + S(0) = S(S(0))', 10],
+          ['all x. (x = 0 | ex y. x = S(y))', 15],
+          ['all x. 0 + x = x', 20],
+          ['all x. ~(x = S(x))', 25],
           ['all x. all y. S(x) + y = S(x + y)', 30],
-          ['all x. all y. all z. (x + y) + z = x + (y + z)', 34],
+          ['all x. all y. all z. (x + y) + z = x + (y + z)', 40],
           ['all x. all y. x + y = y + x', 50]
         ]
       },
@@ -1378,15 +1379,15 @@
         ],
         schemas: [{ name: '帰納法スキーマ' }],
         theorems: [
-          ['all x. x + 0 = x', 4],
-          ['S(0) + S(0) = S(S(0))', 14],
-          ['S(S(0)) * S(S(0)) = S(S(S(S(0))))', 20],
-          ['all x. (x = 0 | ex y. x = S(y))', 24],
-          ['all x. 0 + x = x', 26],
+          ['all x. x + 0 = x', 5],
+          ['S(0) + S(0) = S(S(0))', 10],
+          ['S(S(0)) * S(S(0)) = S(S(S(S(0))))', 15],
+          ['all x. (x = 0 | ex y. x = S(y))', 20],
+          ['all x. 0 + x = x', 25],
           ['all x. all y. S(x) + y = S(x + y)', 30],
-          ['all x. all y. x + y = y + x', 50],
-          ['all x. all y. x * y = y * x', 70],
-          ['all x. all y. all z. (x + y) * z = x * z + y * z', 100],
+          ['all x. all y. x + y = y + x', 40],
+          ['all x. all y. x * y = y * x', 50],
+          ['all x. all y. all z. (x + y) * z = x * z + y * z', 50],
         ]
       },
       ring: {
@@ -1409,15 +1410,15 @@
           ['分配律', 'all x. all y. all z. x * (y + z) = x * y + x * z']
         ],
         theorems: [
-          ['all x. all y. x + y = y + x', 6],
+          ['all x. all y. x + y = y + x', 5],
           ['all x. ex y. x + y = 0', 10],
-          ['all x. 0 + x = x', 14],
-          ['all x. 1 * x = x', 14],
-          ['ex x. all y. x + y = y', 18],
-          ['all x. all y. all z. (y + z) * x = y * x + z * x', 22],
-          ['neg(0) = 0', 26],
-          ['all x. all y. all z. x + y = x + z -> y = z', 40],
-          ['all x. x * 0 = 0', 46],
+          ['all x. 0 + x = x', 15],
+          ['all x. 1 * x = x', 15],
+          ['ex x. all y. x + y = y', 20],
+          ['all x. all y. all z. (y + z) * x = y * x + z * x', 20],
+          ['neg(0) = 0', 25],
+          ['all x. all y. all z. x + y = x + z -> y = z', 30],
+          ['all x. x * 0 = 0', 40],
           ['all x. neg(neg(x)) = x', 50]
         ]
       }
