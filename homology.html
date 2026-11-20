@@ -2080,6 +2080,9 @@
         disposeWorld();
         makeMaterials();
 
+        // ステージ③・⑦だけ、階段の左右を壁にする。
+        stairWallMode = index === 2 || index === 6;
+
         let start;
 
         if (index < 4) {
@@ -2124,6 +2127,14 @@
           periodZ: start.periodZ || 0,
           dirty: true
         });
+
+        const scale = expansion.horizontalScale;
+
+        camera.far = 100 * scale;
+        camera.updateProjectionMatrix();
+
+        scene.fog.near = 24 * scale;
+        scene.fog.far = 70 * scale;
 
         document.getElementById("stage-number").textContent =
           `STAGE ${String(index + 1).padStart(2, "0")} / 10`;
@@ -2417,16 +2428,21 @@
       function render() {
         expansion.prepareFrame(state);
 
+        const scale = expansion.horizontalScale;
+        const cameraX = state.x * scale;
+        const cameraZ = state.z * scale;
+        const cameraY = state.foot + PLAYER.eye;
+
         camera.position.set(
-          state.x,
-          state.foot + PLAYER.eye,
-          state.z
+          cameraX,
+          cameraY,
+          cameraZ
         );
 
         camera.lookAt(
-          state.x + Math.sin(state.yaw),
-          state.foot + PLAYER.eye,
-          state.z - Math.cos(state.yaw)
+          cameraX + Math.sin(state.yaw),
+          cameraY,
+          cameraZ - Math.cos(state.yaw)
         );
 
         floorLabel.textContent = state.floor;
@@ -2530,8 +2546,8 @@
             + "\n← / A・→ / D：90度向きを変える"
             + "\nEsc：中断・ギブアップ"
             + "\n\n階段は進む操作で上り下りできます。"
-            + "\n「階段」と書かれた床のパネルは、"
-            + "踏み込むと階段区間につながります。"
+            + "\nステージ⑩では、上り・下りの表示がある"
+            + "入口から階段室へ入ってください。"
             + "\n\n探索するステージを選んでください。",
           actions
         );
